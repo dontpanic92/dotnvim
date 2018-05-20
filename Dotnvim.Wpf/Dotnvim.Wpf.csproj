@@ -130,9 +130,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="D2DControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
     <Compile Include="DefaultRedrawEventFactory.cs" />
     <Compile Include="Events\ClearEvent.cs" />
     <Compile Include="Events\CursorGotoEvent.cs" />
@@ -156,23 +153,14 @@
     <Compile Include="Neovim.cs" />
     <Compile Include="Rendering\Cursor.cs" />
     <Compile Include="Rendering\D2D1Renderer.cs" />
-    <Compile Include="Rendering\D2D1HwndRenderer.cs" />
     <Compile Include="Rendering\Utilities.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="SettingsDialog.xaml.cs">
       <DependentUpon>SettingsDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="WindowBlurExtensions.cs" />
-    <Page Include="MainWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="MainWindow.xaml.cs">
-      <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
     <Page Include="MainWindow2.xaml">
