@@ -214,8 +214,8 @@ namespace Dotnvim.NeovimClient
                     case "resize":
                         {
                             var list = cmd[1].AsList();
-                            uint row = list[0].AsUInt32();
-                            uint col = list[1].AsUInt32();
+                            uint col = list[0].AsUInt32();
+                            uint row = list[1].AsUInt32();
                             events.Add(this.factory.CreateResizeEvent(row, col));
                             break;
                         }

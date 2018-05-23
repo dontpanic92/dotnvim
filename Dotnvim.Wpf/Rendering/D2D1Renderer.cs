@@ -78,11 +78,11 @@ namespace Dotnvim.Wpf.Rendering
 
             this.cursor = new Cursor(this.deviceContext2d);
 
-            using (var textFormat = new DWrite.TextFormat(this.factoryDWrite, this.fontName, DWrite.FontWeight.Normal, DWrite.FontStyle.Normal, Utilities.GetFontSize(this.fontPoint)))
+            using (var textFormat = new DWrite.TextFormat(this.factoryDWrite, this.fontName, DWrite.FontWeight.Normal, DWrite.FontStyle.Normal, (float)Utilities.GetFontSize(this.fontPoint)))
             using (var textLayout = new DWrite.TextLayout(this.factoryDWrite, "A", textFormat, 1000, 1000))
             {
-                this.lineHeight = textLayout.Metrics.Height;
-                this.charWidth = textLayout.OverhangMetrics.Left + (1000 + textLayout.OverhangMetrics.Right);
+                this.lineHeight = Utilities.AlignToPixel(textLayout.Metrics.Height, this.factory2d.DesktopDpi.Height);
+                this.charWidth = Utilities.AlignToPixel(textLayout.OverhangMetrics.Left + (1000 + textLayout.OverhangMetrics.Right), this.factory2d.DesktopDpi.Width);
             }
 
             this.transparentBackground = transparentBackground;
@@ -222,12 +222,14 @@ namespace Dotnvim.Wpf.Rendering
         /// <summary>
         /// Resize event
         /// </summary>
-        /// <param name="col">col</param>
         /// <param name="row">row</param>
-        public void Resize(int col, int row)
+        /// <param name="col">col</param>
+        public void Resize(int row, int col)
         {
             this.col = col;
             this.row = row;
+            this.scrollRight = col - 1;
+            this.scrollBottom = row - 1;
 
             this.ResizeRenderTarget();
             this.deviceContext2d.Target = this.renderBitmap;
@@ -254,25 +256,27 @@ namespace Dotnvim.Wpf.Rendering
         /// <param name="count">Row count to scroll</param>
         public void Scroll(int count)
         {
+            float deltaHeight = this.lineHeight * Math.Abs(count);
+
             var scrollRect = new SharpDX.Mathematics.Interop.RawRectangleF()
             {
                 Top = this.lineHeight * this.scrollTop,
-                Bottom = this.lineHeight * (this.scrollBottom + 1),
+                Bottom = (this.lineHeight * (this.scrollBottom + 1)) - 1,
                 Left = this.charWidth * this.scrollLeft,
-                Right = this.charWidth * this.scrollRight,
+                Right = (this.charWidth * this.scrollRight) - 1,
             };
 
             var upperRect = new SharpDX.Mathematics.Interop.RawRectangleF()
             {
                 Top = scrollRect.Top,
-                Bottom = this.lineHeight * (this.scrollBottom - Math.Abs(count) + 1),
+                Bottom = scrollRect.Bottom - deltaHeight,
                 Left = scrollRect.Left,
                 Right = scrollRect.Right,
             };
 
             var lowerRect = new SharpDX.Mathematics.Interop.RawRectangleF()
             {
-                Top = this.lineHeight * (this.scrollTop + Math.Abs(count)),
+                Top = scrollRect.Top + deltaHeight,
                 Bottom = scrollRect.Bottom,
                 Left = scrollRect.Left,
                 Right = scrollRect.Right,
@@ -403,7 +407,7 @@ namespace Dotnvim.Wpf.Rendering
             if (this.transparentBackground)
             {
                 // If the background color is explictly specified and is different from the default
-                // background color, set opacity to 50%
+                // background color, set opacity to 1
                 if (backgroundColor.R == this.backgroundColor.R
                     && backgroundColor.G == this.backgroundColor.G
                     && backgroundColor.B == this.backgroundColor.B)
@@ -412,7 +416,7 @@ namespace Dotnvim.Wpf.Rendering
                 }
                 else
                 {
-                    backgroundColor.A = 0.5f;
+                    backgroundColor.A = 1f;
                 }
             }
 

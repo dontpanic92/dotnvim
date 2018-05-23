@@ -74,45 +74,8 @@ namespace Dotnvim.Wpf
             Marshal.FreeHGlobal(accentPtr);
         }
 
-        /// <summary>
-        /// ???
-        /// </summary>
-        /// <param name="window">aaa</param>
-        /// <returns>bbb</returns>
-        public static bool DropShadow(this Window window)
-        {
-            try
-            {
-                WindowInteropHelper helper = new WindowInteropHelper(window);
-                int val = 2;
-                int ret1 = DwnSetWindowAttribute(helper.Handle, 2, ref val, 4);
-
-                if (ret1 == 0)
-                {
-                    System.Drawing.Printing.Margins m = new System.Drawing.Printing.Margins { Bottom = 0, Left = 0, Right = 0, Top = 0 };
-                    int ret2 = DwnExtendFrameIntoClientArea(helper.Handle, ref m);
-
-                    return ret2 == 0;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
         [DllImport("user32.dll")]
         internal static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
-
-        [DllImport("dwmapi.dll", PreserveSig = true)]
-        private static extern int DwnSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-
-        [DllImport("dwmapi.dll")]
-        private static extern int DwnExtendFrameIntoClientArea(IntPtr hwnd, ref System.Drawing.Printing.Margins pMarInset);
 
         [StructLayout(LayoutKind.Sequential)]
         internal struct AccentPolicy

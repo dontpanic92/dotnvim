@@ -129,7 +129,6 @@ namespace Dotnvim.Wpf
         private void MainWindow2_Loaded(object sender, RoutedEventArgs e)
         {
             HwndSource.FromHwnd(new WindowInteropHelper(this).Handle).AddHook(this.HwndProcHook);
-            this.DropShadow();
         }
 
         private void Host_Loaded(object sender, RoutedEventArgs e)
@@ -229,7 +228,7 @@ namespace Dotnvim.Wpf
                         switch (ev)
                         {
                             case ResizeEvent e:
-                                this.renderer.Resize(0, 0);
+                                this.renderer.Resize((int)e.Row, (int)e.Col);
                                 break;
                             case ClearEvent e:
                                 this.renderer.Clear();
