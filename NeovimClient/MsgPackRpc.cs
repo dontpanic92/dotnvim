@@ -96,7 +96,6 @@ namespace Dotnvim.NeovimClient
             var packer = MsgPack.Serialization.MessagePackSerializer.Get<List<object>>();
             packer.Pack(this.writer, request);
             this.writer.Flush();
-            Trace.WriteLine("Send request: " + name);
             return responseSignal.Task;
         }
 
@@ -136,7 +135,6 @@ namespace Dotnvim.NeovimClient
                             throw new Exception("Wrong MsgPackRpc format: Request must have 4 elements but " + list.Count + "received");
                         }
 
-                        Trace.WriteLine("Received request: " + list[2] as string);
                         break;
                     case 1:
                         // Response
@@ -145,7 +143,6 @@ namespace Dotnvim.NeovimClient
                             throw new Exception("Wrong MsgPackRpc format: Response must have 3 elements but " + list.Count + "received");
                         }
 
-                        Trace.WriteLine("Received Response");
                         this.OnResponse(list[1].AsUInt32(), list[2], list[3]);
                         break;
                     case 2:
@@ -155,7 +152,6 @@ namespace Dotnvim.NeovimClient
                             throw new Exception("Wrong MsgPackRpc format: Notification must have 3 elements but " + list.Count + "received");
                         }
 
-                        Trace.WriteLine("Received Notification: " + list[1] as string);
                         this.OnNotification(list[1].AsString(), list[2].AsList());
 
                         break;

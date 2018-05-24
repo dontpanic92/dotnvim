@@ -143,7 +143,7 @@ namespace Dotnvim.NeovimClient
                 var cmd = rawEvent.AsList();
                 var eventName = cmd[0].AsString();
 
-                Debug.WriteLine("event: " + string.Join(" ", cmd));
+                // Debug.WriteLine("event: " + string.Join(" ", cmd));
                 switch (eventName)
                 {
                     case "set_title":

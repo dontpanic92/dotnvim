@@ -7,6 +7,7 @@ namespace Dotnvim.Wpf.Rendering
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading;
     using SharpDX;
     using D2D = SharpDX.Direct2D1;
     using D3D = SharpDX.Direct3D;
@@ -26,7 +27,9 @@ namespace Dotnvim.Wpf.Rendering
         private readonly D2D.DeviceContext deviceContext2d;
         private readonly Cursor cursor;
 
-        private IntPtr backBufferPtr = IntPtr.Zero;
+        private readonly object drawLock = new object();
+
+        private D3D11.Texture2D backBuffer;
         private D2D.Bitmap backBitmap;
         private D2D.Bitmap renderBitmap;
 
@@ -93,26 +96,9 @@ namespace Dotnvim.Wpf.Rendering
         }
 
         /// <summary>
-        /// Gets or sets the texture that to be rendered on
+        /// Gets the back buffer
         /// </summary>
-        public IntPtr RenderBufferPtr
-        {
-            get
-            {
-                return this.backBufferPtr;
-            }
-
-            set
-            {
-                if (value == this.backBufferPtr)
-                {
-                    return;
-                }
-
-                this.backBufferPtr = value;
-                this.InitializeRenderTarget(value);
-            }
-        }
+        public D3D11.Texture2D BackBuffer => this.backBuffer;
 
         /// <summary>
         /// Gets the desired row count
@@ -143,6 +129,7 @@ namespace Dotnvim.Wpf.Rendering
         public void Resize(Size2F size)
         {
             this.targetSize = size;
+            this.InitializeBackBuffer(size);
         }
 
         /// <summary>
@@ -164,8 +151,8 @@ namespace Dotnvim.Wpf.Rendering
         /// </summary>
         public void BeginDraw()
         {
+            Monitor.Enter(this.drawLock);
             this.deviceContext2d.BeginDraw();
-
             this.deviceContext2d.Target = this.renderBitmap;
         }
 
@@ -176,6 +163,7 @@ namespace Dotnvim.Wpf.Rendering
         {
             this.deviceContext2d.Target = null;
             this.deviceContext2d.EndDraw();
+            Monitor.Exit(this.drawLock);
         }
 
         /// <summary>
@@ -183,40 +171,38 @@ namespace Dotnvim.Wpf.Rendering
         /// </summary>
         public void Present()
         {
-            if (this.backBitmap == null)
+            if (this.backBitmap == null || this.renderBitmap == null)
             {
                 return;
             }
 
+            Monitor.Enter(this.drawLock);
+            this.backBitmap.CopyFromBitmap(this.renderBitmap);
             this.deviceContext2d.BeginDraw();
             this.deviceContext2d.Target = this.backBitmap;
 
-            if (this.renderBitmap != null)
+            var rect = new SharpDX.Mathematics.Interop.RawRectangleF()
             {
-                var rect = new SharpDX.Mathematics.Interop.RawRectangleF()
-                {
-                    Left = 0,
-                    Top = 0,
-                    Right = this.renderBitmap.Size.Width,
-                    Bottom = this.renderBitmap.Size.Height,
-                };
+                Left = 0,
+                Top = 0,
+                Right = this.renderBitmap.Size.Width,
+                Bottom = this.renderBitmap.Size.Height,
+            };
 
-                var cursorRect = new SharpDX.Mathematics.Interop.RawRectangleF()
-                {
-                    Left = this.cursorX * this.charWidth,
-                    Top = this.cursorY * this.lineHeight,
-                    Right = (this.cursorX + 1) * this.charWidth,
-                    Bottom = (this.cursorY + 1) * this.lineHeight,
-                };
+            var cursorRect = new SharpDX.Mathematics.Interop.RawRectangleF()
+            {
+                Left = this.cursorX * this.charWidth,
+                Top = this.cursorY * this.lineHeight,
+                Right = (this.cursorX + 1) * this.charWidth,
+                Bottom = (this.cursorY + 1) * this.lineHeight,
+            };
 
-                this.deviceContext2d.Clear(this.backgroundColor);
-                this.deviceContext2d.DrawBitmap(this.renderBitmap, rect, 1, D2D.InterpolationMode.NearestNeighbor, rect, null);
-                this.cursor.DrawCursor(this.renderBitmap, cursorRect);
-            }
-
+            this.cursor.DrawCursor(this.renderBitmap, cursorRect);
             this.deviceContext2d.Target = null;
             this.deviceContext2d.EndDraw();
             this.device.ImmediateContext.Flush();
+
+            Monitor.Exit(this.drawLock);
         }
 
         /// <summary>
@@ -454,7 +440,11 @@ namespace Dotnvim.Wpf.Rendering
 
                         using (var textLayout = new DWrite.TextLayout(this.factoryDWrite, text, textFormat, this.charWidth * widthFactor, this.lineHeight))
                         {
-                            textLayout.SetUnderline(underline, new DWrite.TextRange(0, text.Length));
+                            if (underline)
+                            {
+                                textLayout.SetUnderline(underline, new DWrite.TextRange(0, text.Length));
+                            }
+
                             var origin = new SharpDX.Mathematics.Interop.RawVector2()
                             {
                                 X = this.charWidth * this.cursorX,
@@ -469,13 +459,31 @@ namespace Dotnvim.Wpf.Rendering
             }
         }
 
-        private void InitializeRenderTarget(IntPtr ptr)
+        private void InitializeBackBuffer(Size2F size)
         {
-            var comObject = new ComObject(ptr);
-            var dxgiResource = comObject.QueryInterface<DXGI.Resource>();
-            var backBuffer = this.device.OpenSharedResource<D3D11.Texture2D>(dxgiResource.SharedHandle);
+            if (this.backBuffer != null)
+            {
+                this.backBuffer.Dispose();
+            }
 
-            using (var surface = backBuffer.QueryInterface<DXGI.Surface>())
+            Size2 pixelSize = Utilities.GetPixelSize(size, this.factory2d.DesktopDpi);
+
+            var desc = new D3D11.Texture2DDescription()
+            {
+                ArraySize = 1,
+                BindFlags = D3D11.BindFlags.RenderTarget | D3D11.BindFlags.ShaderResource,
+                CpuAccessFlags = D3D11.CpuAccessFlags.None,
+                Format = DXGI.Format.B8G8R8A8_UNorm,
+                MipLevels = 1,
+                OptionFlags = D3D11.ResourceOptionFlags.Shared,
+                Usage = D3D11.ResourceUsage.Default,
+                SampleDescription = new DXGI.SampleDescription(1, 0),
+                Width = pixelSize.Width,
+                Height = pixelSize.Height,
+            };
+
+            this.backBuffer = new D3D11.Texture2D(this.device, desc);
+            using (var surface = this.backBuffer.QueryInterface<DXGI.Surface>())
             {
                 var properties = new D2D.BitmapProperties(
                     new D2D.PixelFormat(DXGI.Format.B8G8R8A8_UNorm, D2D.AlphaMode.Premultiplied),
