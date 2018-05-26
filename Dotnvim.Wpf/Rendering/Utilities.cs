@@ -49,9 +49,9 @@ namespace Dotnvim.Wpf.Rendering
             return new RawRectangle()
             {
                 Top = (int)Math.Round(dpi.Height * rect.Top / 96),
-                Bottom = (int)Math.Round((dpi.Height * (rect.Bottom + 1) / 96) - 1),
+                Bottom = (int)Math.Round(dpi.Height * rect.Bottom / 96),
                 Left = (int)Math.Round(dpi.Width * rect.Left / 96),
-                Right = (int)Math.Round((dpi.Width * (rect.Right + 1) / 96) - 1),
+                Right = (int)Math.Round(dpi.Width * rect.Right / 96),
             };
         }
 
@@ -94,25 +94,15 @@ namespace Dotnvim.Wpf.Rendering
         /// <returns>The new copied bitmap</returns>
         public static D2D.Bitmap CopyBitmap(D2D.RenderTarget renderTarget, D2D.Bitmap bitmap, RawRectangleF rect, Size2F dpi)
         {
-            var pixelSize = GetPixelSize(
-                new Size2F(rect.Right - rect.Left, rect.Bottom - rect.Top),
-                dpi);
-
             var bitmapProperties = new D2D.BitmapProperties(
                 bitmap.PixelFormat,
                 dpi.Width,
                 dpi.Height);
 
             var pixelRect = GetRawRectangle(rect, dpi);
+            var pixelSize = new Size2(pixelRect.Right - pixelRect.Left, pixelRect.Bottom - pixelRect.Top);
             var newBitmap = new D2D.Bitmap(renderTarget, pixelSize, bitmapProperties);
             newBitmap.CopyFromBitmap(bitmap, new RawPoint(0, 0), pixelRect);
-
-            /*var bitmapProperties = new D2D.BitmapProperties(
-                bitmap.PixelFormat,
-                dpi.Width,
-                dpi.Height);
-            var newBitmap = new D2D.Bitmap(renderTarget, bitmap.PixelSize, bitmapProperties);
-            newBitmap.CopyFromBitmap(bitmap);*/
             return newBitmap;
         }
     }

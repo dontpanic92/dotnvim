@@ -43,6 +43,13 @@ namespace Dotnvim.Wpf.Input
             { Key.F12, "F12" },
         };
 
+        private enum KeyMappingResult
+        {
+            Failed,
+            WithModifiers,
+            WithoutModifiers,
+        }
+
         /// <summary>
         /// Mapping a key to a vim recognizable text
         /// </summary>
@@ -53,23 +60,13 @@ namespace Dotnvim.Wpf.Input
         public static bool TryMap(KeyboardDevice device, Key key, out string text)
         {
             text = string.Empty;
-            if (!TryMapKey(key, out text, out var needEscape))
+            var result = TryMapKey(key, out text, out var needEscape);
+            if (result == KeyMappingResult.Failed)
             {
                 return false;
             }
 
-            if (text == "<")
-            {
-                text = "lt";
-                needEscape = true;
-            }
-            else if (text == "\\")
-            {
-                text = "Bslash";
-                needEscape = true;
-            }
-
-            var modifierPrefix = GetModifierPrefix(device);
+            var modifierPrefix = result == KeyMappingResult.WithModifiers ? string.Empty : GetModifierPrefix(device);
 
             if (needEscape || !string.IsNullOrEmpty(modifierPrefix))
             {
@@ -100,24 +97,45 @@ namespace Dotnvim.Wpf.Input
             return text;
         }
 
-        private static bool TryMapKey(Key key, out string text, out bool needEscape)
+        private static KeyMappingResult TryMapKey(Key key, out string text, out bool needEscape)
         {
             if (specialKeys.TryGetValue(key, out text))
             {
                 needEscape = true;
-                return true;
+                return KeyMappingResult.WithoutModifiers;
             }
             else
             {
                 needEscape = false;
+                var result = KeyMappingResult.WithModifiers;
+
                 int virtualKey = KeyInterop.VirtualKeyFromKey(key);
-                text = NativeInterop.Methods.VirtualKeyToString(virtualKey);
+                text = NativeInterop.Methods.VirtualKeyToStringWithModifiers(virtualKey);
                 if (text == null)
                 {
-                    return false;
+                    text = NativeInterop.Methods.VirtualKeyToStringWithoutModifiers(virtualKey);
+                    if (text == null)
+                    {
+                        return KeyMappingResult.Failed;
+                    }
+                    else
+                    {
+                        result = KeyMappingResult.WithoutModifiers;
+                    }
                 }
 
-                return true;
+                if (text == "<")
+                {
+                    text = "lt";
+                    needEscape = true;
+                }
+                else if (text == "\\")
+                {
+                    text = "Bslash";
+                    needEscape = true;
+                }
+
+                return result;
             }
         }
     }

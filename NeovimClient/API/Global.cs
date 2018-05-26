@@ -12,7 +12,7 @@ namespace Dotnvim.NeovimClient.API
     /// </summary>
     public class Global
     {
-        private MsgPackRpc msgPackRpc;
+        private readonly MsgPackRpc msgPackRpc;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Global"/> class.

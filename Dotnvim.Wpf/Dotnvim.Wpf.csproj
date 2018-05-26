@@ -64,10 +64,10 @@
   <PropertyGroup>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>neovim_mark_flat.ico</ApplicationIcon>
+  </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="SharpDX, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
       <HintPath>..\packages\SharpDX.4.0.1\lib\net45\SharpDX.dll</HintPath>
     </Reference>
@@ -110,10 +110,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Controls\D2DControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\D2DControlWrapper.cs" />
     <Compile Include="DefaultRedrawEventFactory.cs" />
     <Compile Include="Events\ClearEvent.cs" />
     <Compile Include="Events\CursorGotoEvent.cs" />
@@ -139,7 +135,6 @@
     <Compile Include="Rendering\D2D1Renderer.cs" />
     <Compile Include="Rendering\D3D9SurfaceAdapter.cs" />
     <Compile Include="Rendering\Utilities.cs" />
-    <Compile Include="Settings.cs" />
     <Compile Include="SettingsDialog.xaml.cs">
       <DependentUpon>SettingsDialog.xaml</DependentUpon>
     </Compile>
@@ -205,6 +200,9 @@
   <ItemGroup>
     <Resource Include="Assets\neovim-logo-flat.png" />
     <Resource Include="Assets\neovim-mark-flat.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="neovim_mark_flat.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

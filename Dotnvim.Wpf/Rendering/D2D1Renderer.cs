@@ -65,7 +65,11 @@ namespace Dotnvim.Wpf.Rendering
         {
             this.device = new D3D11.Device(
                 D3D.DriverType.Hardware,
+#if DEBUG
                 D3D11.DeviceCreationFlags.BgraSupport | D3D11.DeviceCreationFlags.Debug,
+#else
+                D3D11.DeviceCreationFlags.BgraSupport,
+#endif
                 new D3D.FeatureLevel[] { D3D.FeatureLevel.Level_11_1 });
 
             using (var device = this.device.QueryInterface<DXGI.Device>())
@@ -128,6 +132,16 @@ namespace Dotnvim.Wpf.Rendering
         /// <param name="size">Size of the surface</param>
         public void Resize(Size2F size)
         {
+            if (size.Width == 0)
+            {
+                size.Width = 1;
+            }
+
+            if (size.Height == 0)
+            {
+                size.Height = 1;
+            }
+
             this.targetSize = size;
             this.InitializeBackBuffer(size);
         }
@@ -176,33 +190,33 @@ namespace Dotnvim.Wpf.Rendering
                 return;
             }
 
-            Monitor.Enter(this.drawLock);
-            this.backBitmap.CopyFromBitmap(this.renderBitmap);
-            this.deviceContext2d.BeginDraw();
-            this.deviceContext2d.Target = this.backBitmap;
-
-            var rect = new SharpDX.Mathematics.Interop.RawRectangleF()
+            lock (this.drawLock)
             {
-                Left = 0,
-                Top = 0,
-                Right = this.renderBitmap.Size.Width,
-                Bottom = this.renderBitmap.Size.Height,
-            };
+                this.backBitmap.CopyFromBitmap(this.renderBitmap);
+                this.deviceContext2d.BeginDraw();
+                this.deviceContext2d.Target = this.backBitmap;
 
-            var cursorRect = new SharpDX.Mathematics.Interop.RawRectangleF()
-            {
-                Left = this.cursorX * this.charWidth,
-                Top = this.cursorY * this.lineHeight,
-                Right = (this.cursorX + 1) * this.charWidth,
-                Bottom = (this.cursorY + 1) * this.lineHeight,
-            };
+                var rect = new SharpDX.Mathematics.Interop.RawRectangleF()
+                {
+                    Left = 0,
+                    Top = 0,
+                    Right = this.renderBitmap.Size.Width,
+                    Bottom = this.renderBitmap.Size.Height,
+                };
 
-            this.cursor.DrawCursor(this.renderBitmap, cursorRect);
-            this.deviceContext2d.Target = null;
-            this.deviceContext2d.EndDraw();
-            this.device.ImmediateContext.Flush();
+                var cursorRect = new SharpDX.Mathematics.Interop.RawRectangleF()
+                {
+                    Left = this.cursorX * this.charWidth,
+                    Top = this.cursorY * this.lineHeight,
+                    Right = (this.cursorX + 1) * this.charWidth,
+                    Bottom = (this.cursorY + 1) * this.lineHeight,
+                };
 
-            Monitor.Exit(this.drawLock);
+                this.cursor.DrawCursor(this.renderBitmap, cursorRect);
+                this.deviceContext2d.Target = null;
+                this.deviceContext2d.EndDraw();
+                this.device.ImmediateContext.Flush();
+            }
         }
 
         /// <summary>
@@ -247,9 +261,9 @@ namespace Dotnvim.Wpf.Rendering
             var scrollRect = new SharpDX.Mathematics.Interop.RawRectangleF()
             {
                 Top = this.lineHeight * this.scrollTop,
-                Bottom = (this.lineHeight * (this.scrollBottom + 1)) - 1,
+                Bottom = this.lineHeight * (this.scrollBottom + 1),
                 Left = this.charWidth * this.scrollLeft,
-                Right = (this.charWidth * this.scrollRight) - 1,
+                Right = this.charWidth * this.scrollRight,
             };
 
             var upperRect = new SharpDX.Mathematics.Interop.RawRectangleF()

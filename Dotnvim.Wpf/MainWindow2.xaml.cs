@@ -11,6 +11,7 @@ namespace Dotnvim.Wpf
     using System.ComponentModel;
     using System.Diagnostics;
     using System.Runtime.InteropServices;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Windows;
     using System.Windows.Input;
@@ -46,7 +47,7 @@ namespace Dotnvim.Wpf
 
         private bool neovimExited = false;
 
-        private volatile bool dirty = false;
+        private volatile int isDirty = 0;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MainWindow2"/> class.
@@ -77,6 +78,7 @@ namespace Dotnvim.Wpf
             this.Closing += this.MainWindow_Closing;
             this.TextInput += this.MainWindow_TextInput;
             this.KeyDown += this.MainWindow_KeyDown;
+            this.PreviewKeyDown += this.MainWindow2_PreviewKeyDown;
 
             this.neovim.Redraw += this.OnNeovimRedraw;
             this.neovim.NeovimExited += (int exitCode) =>
@@ -127,19 +129,17 @@ namespace Dotnvim.Wpf
 
         private void MainWindow2_Loaded(object sender, RoutedEventArgs e)
         {
-            HwndSource.FromHwnd(new WindowInteropHelper(this).Handle).AddHook(this.HwndProcHook);
-
+            var handle = new WindowInteropHelper(this).Handle;
+            HwndSource.FromHwnd(handle).AddHook(this.HwndProcHook);
             CompositionTarget.Rendering += this.CompositionTarget_Rendering;
         }
 
         private void CompositionTarget_Rendering(object sender, EventArgs e)
         {
-            if (this.dirty)
+            if (Interlocked.CompareExchange(ref this.isDirty, 0, 1) == 1)
             {
                 this.InvalidateImage();
             }
-
-            this.dirty = false;
         }
 
         private void Host_Loaded(object sender, RoutedEventArgs e)
@@ -160,9 +160,14 @@ namespace Dotnvim.Wpf
             this.neovim.UI.TryResize(this.renderer.DesiredColCount, this.renderer.DesiredRowCount);
         }
 
+        private void MainWindow2_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+        }
+
         private void MainWindow_KeyDown(object sender, KeyEventArgs e)
         {
-            if (Input.KeyMapping.TryMap(e.KeyboardDevice, e.Key, out var text))
+            Key key = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (Input.KeyMapping.TryMap(e.KeyboardDevice, key, out var text))
             {
                 this.neovim.Global.Input(text);
                 e.Handled = true;
@@ -221,10 +226,10 @@ namespace Dotnvim.Wpf
                         this.renderer.CursorGoto((int)e.Row, (int)e.Col);
                         break;
                     case SetTitleEvent e:
-                        Application.Current.MainWindow.Title = e.Title;
+                        Application.Current.Dispatcher.Invoke(() => Application.Current.MainWindow.Title = e.Title);
                         break;
                     case SetIconTitleEvent e:
-                        Application.Current.MainWindow.Title = e.Title;
+                        Application.Current.Dispatcher.Invoke(() => Application.Current.MainWindow.Title = e.Title);
                         break;
                     case PutEvent e:
                         this.renderer.Put(
@@ -277,7 +282,7 @@ namespace Dotnvim.Wpf
 
             this.renderer.EndDraw();
             this.renderer.Present();
-            this.dirty = true;
+            this.isDirty = 1;
         }
 
         private void ResizeImage()
