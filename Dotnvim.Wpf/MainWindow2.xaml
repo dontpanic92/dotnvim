@@ -10,9 +10,24 @@
         Title="dotnvim" Height="450" Width="800"
         x:Name="dotnvimWindow" Icon="Assets\neovim-mark-flat.png"
         AllowsTransparency="True" WindowStyle="None" Background="#01FFFFFF">
-    <WindowChrome.WindowChrome>
-        <WindowChrome GlassFrameThickness="0" CornerRadius="0" CaptionHeight="{Binding ActualHeight, ElementName=TitleBar}" UseAeroCaptionButtons="False" ResizeBorderThickness="7" />
-    </WindowChrome.WindowChrome>
+    <Window.Style>
+        <Style>
+            <Setter Property="WindowChrome.WindowChrome">
+                <Setter.Value>
+                    <WindowChrome ResizeBorderThickness="4" />
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="Window.WindowState" Value="Maximized">
+                    <Setter Property="WindowChrome.WindowChrome">
+                        <Setter.Value>
+                            <WindowChrome ResizeBorderThickness="0" />
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Style>
     <Window.Resources>
         <SolidColorBrush Color="{Binding NeovimForeground,ElementName=dotnvimWindow}" x:Key="ForegroundBrush" />
         <SolidColorBrush Color="{Binding NeovimBackground,ElementName=dotnvimWindow}" x:Key="BackgroundBrush" />
