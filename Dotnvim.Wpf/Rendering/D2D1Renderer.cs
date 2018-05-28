@@ -39,7 +39,7 @@ namespace Dotnvim.Wpf.Rendering
         private SharpDX.Mathematics.Interop.RawColor4 foregroundColor;
         private SharpDX.Mathematics.Interop.RawColor4 specialColor;
 
-        private string fontName = "Consolas";
+        private string fontName = "Fira Code";
         private float fontPoint = 11;
         private float lineHeight;
         private float charWidth;
@@ -437,6 +437,9 @@ namespace Dotnvim.Wpf.Rendering
 
                 using (var textFormat = new DWrite.TextFormat(this.factoryDWrite, this.fontName, fontWeight, fontStyle, Utilities.GetFontSize(this.fontPoint)))
                 {
+                    textFormat.SetLineSpacing(DWrite.LineSpacingMethod.Uniform, this.lineHeight, this.lineHeight * 0.8f);
+                    textFormat.TextAlignment = DWrite.TextAlignment.Center;
+
                     for (int i = 0; i < textList.Count; i++)
                     {
                         var text = textList[i];

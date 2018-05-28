@@ -65,7 +65,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>neovim_mark_flat.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\neovim_mark_flat.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="SharpDX, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b4dcf0f35e5521f1, processorArchitecture=MSIL">
@@ -202,7 +202,7 @@
     <Resource Include="Assets\neovim-mark-flat.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="neovim_mark_flat.ico" />
+    <Resource Include="Assets\neovim_mark_flat.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

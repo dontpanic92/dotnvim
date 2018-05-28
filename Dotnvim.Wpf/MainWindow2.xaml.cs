@@ -78,7 +78,6 @@ namespace Dotnvim.Wpf
             this.Closing += this.MainWindow_Closing;
             this.TextInput += this.MainWindow_TextInput;
             this.KeyDown += this.MainWindow_KeyDown;
-            this.PreviewKeyDown += this.MainWindow2_PreviewKeyDown;
 
             this.neovim.Redraw += this.OnNeovimRedraw;
             this.neovim.NeovimExited += (int exitCode) =>
@@ -158,10 +157,6 @@ namespace Dotnvim.Wpf
 
             this.ResizeImage();
             this.neovim.UI.TryResize(this.renderer.DesiredColCount, this.renderer.DesiredRowCount);
-        }
-
-        private void MainWindow2_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
         }
 
         private void MainWindow_KeyDown(object sender, KeyEventArgs e)

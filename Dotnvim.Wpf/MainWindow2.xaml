@@ -11,25 +11,23 @@
         x:Name="dotnvimWindow" Icon="Assets\neovim-mark-flat.png"
         AllowsTransparency="True" WindowStyle="None" Background="#01FFFFFF">
     <WindowChrome.WindowChrome>
-        <WindowChrome GlassFrameThickness="0" CornerRadius="0" CaptionHeight="{Binding ActualHeight, ElementName=TitleBar}" UseAeroCaptionButtons="False" ResizeBorderThickness="4" />
+        <WindowChrome GlassFrameThickness="0" CornerRadius="0" CaptionHeight="{Binding ActualHeight, ElementName=TitleBar}" UseAeroCaptionButtons="False" ResizeBorderThickness="7" />
     </WindowChrome.WindowChrome>
     <Window.Resources>
         <SolidColorBrush Color="{Binding NeovimForeground,ElementName=dotnvimWindow}" x:Key="ForegroundBrush" />
         <SolidColorBrush Color="{Binding NeovimBackground,ElementName=dotnvimWindow}" x:Key="BackgroundBrush" />
         <Style TargetType="{x:Type Button}" x:Key="HeaderButton">
             <Setter Property="Foreground" Value="{Binding Foreground,ElementName=TitleText}" />
-            <Setter Property="Background" Value="{Binding Background,ElementName=TitleBar}" />
+            <Setter Property="Background" Value="Transparent" />
             <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
             <Setter Property="DockPanel.Dock" Value="Right" />
             <Setter Property="Focusable" Value="False" />
             <Setter Property="Width" Value="{x:Static SystemParameters.WindowCaptionButtonWidth}" />
-            <Setter Property="VerticalAlignment" Value="Stretch" />
-            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
                         <Border Background="{TemplateBinding Background}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                     </ControlTemplate>
                 </Setter.Value>
