@@ -14,7 +14,7 @@ namespace Dotnvim.NeovimClient
     using System.Threading.Tasks;
 
     /// <summary>
-    /// The RPC client using MsgPackRpc Protocol, through <see cref="Stream"/>s
+    /// The RPC client using MsgPackRpc Protocol, through <see cref="Stream"/>s.
     /// </summary>
     public sealed class MsgPackRpc : IDisposable
     {
@@ -29,9 +29,9 @@ namespace Dotnvim.NeovimClient
         /// <summary>
         /// Initializes a new instance of the <see cref="MsgPackRpc"/> class.
         /// </summary>
-        /// <param name="writer">The stream for sending data to remote</param>
-        /// <param name="reader">The stream for receiving data from remote</param>
-        /// <param name="handler">Notification handler</param>
+        /// <param name="writer">The stream for sending data to remote.</param>
+        /// <param name="reader">The stream for receiving data from remote.</param>
+        /// <param name="handler">Notification handler.</param>
         public MsgPackRpc(Stream writer, Stream reader, NotificationHandler handler)
         {
             this.writer = writer;
@@ -42,27 +42,27 @@ namespace Dotnvim.NeovimClient
         }
 
         /// <summary>
-        /// The RequestHandler type to process requests
+        /// The RequestHandler type to process requests.
         /// </summary>
-        /// <param name="method">The name of the method in the request</param>
-        /// <param name="args">The args of the method</param>
-        /// <returns>If error occured, returns null; otherwise returns the response</returns>
+        /// <param name="method">The name of the method in the request.</param>
+        /// <param name="args">The args of the method.</param>
+        /// <returns>If error occured, returns null; otherwise returns the response.</returns>
         public delegate object RequestHandler(string method, IList<MsgPack.MessagePackObject> args);
 
         /// <summary>
-        /// The RequestHandler type to process notifications
+        /// The RequestHandler type to process notifications.
         /// </summary>
-        /// <param name="method">The name of the method in the request</param>
-        /// <param name="args">The args of the method</param>
+        /// <param name="method">The name of the method in the request.</param>
+        /// <param name="args">The args of the method.</param>
         public delegate void NotificationHandler(string method, IList<MsgPack.MessagePackObject> args);
 
         /// <summary>
-        /// Gets or sets the handlers to process requests
+        /// Gets or sets the handlers to process requests.
         /// </summary>
         public RequestHandler RequestHandlers { get; set; }
 
         /// <summary>
-        /// Gets or sets the handlers to process notifications
+        /// Gets or sets the handlers to process notifications.
         /// </summary>
         public NotificationHandler NotificationHandlers { get; set; }
 
@@ -77,14 +77,14 @@ namespace Dotnvim.NeovimClient
         }
 
         /// <summary>
-        /// Send a request to remote
+        /// Send a request to remote.
         /// </summary>
-        /// <param name="name">method name</param>
-        /// <param name="args">method args</param>
+        /// <param name="name">method name.</param>
+        /// <param name="args">method args.</param>
         /// <returns>
         /// Returns a tuple of bool and MessagePackObject; bool represents whether
         /// the request is successfully completed. If true, the object is the return value;
-        /// otherwise the object represents the error that returns from remote
+        /// otherwise the object represents the error that returns from remote.
         /// </returns>
         public Task<(bool, object)> SendRequest(string name, IList<object> args)
         {
@@ -100,7 +100,7 @@ namespace Dotnvim.NeovimClient
         }
 
         /// <summary>
-        /// Dispose
+        /// Dispose.
         /// </summary>
         public void Dispose()
         {

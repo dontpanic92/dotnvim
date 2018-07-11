@@ -8,7 +8,7 @@ namespace Dotnvim.NeovimClient.API
     using System.Collections.Generic;
 
     /// <summary>
-    /// The apis of UI part
+    /// The apis of UI part.
     /// </summary>
     public class UI
     {
@@ -17,17 +17,17 @@ namespace Dotnvim.NeovimClient.API
         /// <summary>
         /// Initializes a new instance of the <see cref="UI"/> class.
         /// </summary>
-        /// <param name="msgPackRpc">The RPC client</param>
+        /// <param name="msgPackRpc">The RPC client.</param>
         public UI(MsgPackRpc msgPackRpc)
         {
             this.msgPackRpc = msgPackRpc;
         }
 
         /// <summary>
-        /// Attach to Neovim
+        /// Attach to Neovim.
         /// </summary>
-        /// <param name="width">The column count</param>
-        /// <param name="height">The row count</param>
+        /// <param name="width">The column count.</param>
+        /// <param name="height">The row count.</param>
         public void Attach(uint width, uint height)
         {
             var options = new Dictionary<string, bool>()
@@ -39,10 +39,10 @@ namespace Dotnvim.NeovimClient.API
         }
 
         /// <summary>
-        /// Try resize the window
+        /// Try resize the window.
         /// </summary>
-        /// <param name="width">The column count</param>
-        /// <param name="height">The row count</param>
+        /// <param name="width">The column count.</param>
+        /// <param name="height">The row count.</param>
         public void TryResize(uint width, uint height)
         {
             this.msgPackRpc.SendRequest("nvim_ui_try_resize", new List<object>() { width, height });

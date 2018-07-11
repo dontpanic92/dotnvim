@@ -78,8 +78,8 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.ValueTuple, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.ValueTuple.4.4.0\lib\net461\System.ValueTuple.dll</HintPath>
+    <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.ValueTuple.4.5.0\lib\net461\System.ValueTuple.dll</HintPath>
     </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -91,10 +91,29 @@
   <ItemGroup>
     <Compile Include="API\Global.cs" />
     <Compile Include="API\UI.cs" />
+    <Compile Include="DefaultNeovimRpcClient.cs" />
+    <Compile Include="Events\DefaultRedrawEventFactory.cs" />
+    <Compile Include="Events\ClearEvent.cs" />
+    <Compile Include="Events\CursorGotoEvent.cs" />
+    <Compile Include="Events\EolClearEvent.cs" />
+    <Compile Include="Events\HighlightSetEvent.cs" />
+    <Compile Include="Events\IRedrawEvent.cs" />
+    <Compile Include="Events\NopEvent.cs" />
+    <Compile Include="Events\PutEvent.cs" />
+    <Compile Include="Events\ResizeEvent.cs" />
+    <Compile Include="Events\ScrollEvent.cs" />
+    <Compile Include="Events\SetIconTitleEvent.cs" />
+    <Compile Include="Events\SetScrollRegionEvent.cs" />
+    <Compile Include="Events\SetTitleEvent.cs" />
+    <Compile Include="Events\UpdateBgEvent.cs" />
+    <Compile Include="Events\UpdateFgEvent.cs" />
+    <Compile Include="Events\UpdateSpEvent.cs" />
     <Compile Include="IRedrawEventFactory.cs" />
     <Compile Include="MsgPackRpc.cs" />
-    <Compile Include="Neovim.cs" />
+    <Compile Include="NeovimRpcClient.cs" />
+    <Compile Include="NeovimClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="StringExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <AdditionalFiles Include="..\stylecop.json">
@@ -103,8 +122,14 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <Analyzer Include="..\packages\StyleCop.Analyzers.1.1.0-beta006\analyzers\dotnet\cs\StyleCop.Analyzers.CodeFixes.dll" />
-    <Analyzer Include="..\packages\StyleCop.Analyzers.1.1.0-beta006\analyzers\dotnet\cs\StyleCop.Analyzers.dll" />
+    <ProjectReference Include="..\Dotnvim.NativeInterop\Dotnvim.NativeInterop.vcxproj">
+      <Project>{0d6ba789-bd97-448d-9234-0f09f1d8fd3e}</Project>
+      <Name>Dotnvim.NativeInterop</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Analyzer Include="..\packages\StyleCop.Analyzers.1.1.0-beta008\analyzers\dotnet\cs\StyleCop.Analyzers.CodeFixes.dll" />
+    <Analyzer Include="..\packages\StyleCop.Analyzers.1.1.0-beta008\analyzers\dotnet\cs\StyleCop.Analyzers.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
