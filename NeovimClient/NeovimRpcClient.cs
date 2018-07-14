@@ -284,6 +284,13 @@ namespace Dotnvim.NeovimClient
                             events.Add(this.factory.CreateScrollEvent(count));
                             break;
                         }
+
+                    case "option_set":
+                        {
+                            var list = cmd[1].AsList();
+                            events.Add(this.factory.CreateOptionSetEvent(list[0].AsString(), list[1].ToString()));
+                            break;
+                        }
                 }
             }
 

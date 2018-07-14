@@ -9,6 +9,7 @@ namespace Dotnvim.NeovimClient
     using System.Collections.Generic;
     using System.Threading;
     using Dotnvim.NeovimClient.Events;
+    using Dotnvim.NeovimClient.Utilities;
 
     /// <summary>
     /// Highlevel neovim client.
@@ -21,7 +22,7 @@ namespace Dotnvim.NeovimClient
 
         private readonly DefaultNeovimRpcClient neovim;
         private readonly object screenLock = new object();
-        private readonly RedrawArgs args = new RedrawArgs();
+        private readonly Screen screen = new Screen();
 
         private int foregroundColor = DefaultForegroundColor;
         private int backgroundColor = DefaultBackgroundColor;
@@ -32,7 +33,7 @@ namespace Dotnvim.NeovimClient
 
         private string title;
         private string iconTitle;
-        private Cell[,] screen;
+        private Cell[,] cells;
         private (int Row, int Col) cursorPosition = (0, 0);
 
         /// <summary>
@@ -73,6 +74,12 @@ namespace Dotnvim.NeovimClient
         public delegate void ColorChangedHandler(int color);
 
         /// <summary>
+        /// Font changed event.
+        /// </summary>
+        /// <param name="fontSettings">The font settings.</param>
+        public delegate void FontChangedHandler(FontSettings fontSettings);
+
+        /// <summary>
         /// Gets or sets the titleChanged event.
         /// </summary>
         public TitleChangedHandler TitleChanged { get; set; }
@@ -97,9 +104,19 @@ namespace Dotnvim.NeovimClient
         /// </summary>
         public ColorChangedHandler BackgroundColorChanged { get; set; }
 
-        private int Height => this.screen.GetLength(0);
+        /// <summary>
+        /// Gets or sets the FontChanged event.
+        /// </summary>
+        public FontChangedHandler FontChanged { get; set; }
 
-        private int Width => this.screen.GetLength(1);
+        /// <summary>
+        /// Gets the Font settings.
+        /// </summary>
+        public FontSettings FontSettings { get; private set; }
+
+        private int Height => this.cells.GetLength(0);
+
+        private int Width => this.cells.GetLength(1);
 
         /// <summary>
         /// Try to resize the screen.
@@ -137,41 +154,50 @@ namespace Dotnvim.NeovimClient
         }
 
         /// <summary>
-        /// Get the redraw args.
+        /// Write an error message to the vim error buffer.
         /// </summary>
-        /// <returns>RedrawArgs.</returns>
-        public RedrawArgs GetRedrawArgs()
+        /// <param name="message">The message.</param>
+        public void WriteErrorMessage(string message)
+        {
+            this.neovim.Global.WriteErrorMessage(message);
+        }
+
+        /// <summary>
+        /// Get the screen.
+        /// </summary>
+        /// <returns>The Screen.</returns>
+        public Screen GetScreen()
         {
             lock (this.screenLock)
             {
-                if (this.screen == null)
+                if (this.cells == null)
                 {
                     return null;
                 }
 
-                if (this.args.Screen == null
-                    || this.args.Screen.GetLength(0) != this.screen.GetLength(0)
-                    || this.args.Screen.GetLength(1) != this.screen.GetLength(1))
+                if (this.screen.Cells == null
+                    || this.screen.Cells.GetLength(0) != this.cells.GetLength(0)
+                    || this.screen.Cells.GetLength(1) != this.cells.GetLength(1))
                 {
-                    this.args.Screen = (Cell[,])this.screen.Clone();
+                    this.screen.Cells = (Cell[,])this.cells.Clone();
                 }
                 else
                 {
-                    for (int i = 0; i < this.screen.GetLength(0); i++)
+                    for (int i = 0; i < this.cells.GetLength(0); i++)
                     {
-                        for (int j = 0; j < this.screen.GetLength(1); j++)
+                        for (int j = 0; j < this.cells.GetLength(1); j++)
                         {
-                            this.args.Screen[i, j] = this.screen[i, j];
+                            this.screen.Cells[i, j] = this.cells[i, j];
                         }
                     }
                 }
 
-                this.args.CursorPosition = this.cursorPosition;
-                this.args.BackgroundColor = this.backgroundColor;
-                this.args.ForegroundColor = this.foregroundColor;
+                this.screen.CursorPosition = this.cursorPosition;
+                this.screen.BackgroundColor = this.backgroundColor;
+                this.screen.ForegroundColor = this.foregroundColor;
             }
 
-            return this.args;
+            return this.screen;
         }
 
         private void OnNeovimRedraw(IList<IRedrawEvent> events)
@@ -236,6 +262,10 @@ namespace Dotnvim.NeovimClient
                         case ScrollEvent e:
                             this.Scroll(e.Count);
                             break;
+                        case GuiFontEvent e:
+                            this.FontSettings = e.FontSettings;
+                            actions.Add(() => this.FontChanged?.Invoke(this.FontSettings));
+                            break;
                     }
                 }
             }
@@ -250,7 +280,7 @@ namespace Dotnvim.NeovimClient
 
         private void Resize(int width, int height)
         {
-            this.screen = new Cell[height, width];
+            this.cells = new Cell[height, width];
             this.Clear();
 
             this.scrollRegion = (0, 0, width - 1, height - 1);
@@ -262,7 +292,7 @@ namespace Dotnvim.NeovimClient
             {
                 for (int j = 0; j < this.Width; j++)
                 {
-                    this.ClearCell(ref this.screen[i, j]);
+                    this.ClearCell(ref this.cells[i, j]);
                 }
             }
 
@@ -274,7 +304,7 @@ namespace Dotnvim.NeovimClient
             int row = this.cursorPosition.Row;
             for (int j = this.cursorPosition.Col; j < this.Width; j++)
             {
-                this.ClearCell(ref this.screen[row, j]);
+                this.ClearCell(ref this.cells[row, j]);
             }
         }
 
@@ -282,7 +312,7 @@ namespace Dotnvim.NeovimClient
         {
             foreach (var ch in text)
             {
-                this.screen[this.cursorPosition.Row, this.cursorPosition.Col].Set(ch, foreground, background, special, reverse, italic, bold, underline, undercurl);
+                this.cells[this.cursorPosition.Row, this.cursorPosition.Col].Set(ch, foreground, background, special, reverse, italic, bold, underline, undercurl);
                 this.cursorPosition.Col++;
             }
         }
@@ -312,13 +342,13 @@ namespace Dotnvim.NeovimClient
                 for (int i = 0; i < this.scrollRegion.Bottom - this.scrollRegion.Top + 1 - Math.Abs(count); i++)
                 {
                     int deltaRow = i * Math.Sign(count);
-                    this.screen[destBegin + deltaRow, j] = this.screen[srcBegin + deltaRow, j];
+                    this.cells[destBegin + deltaRow, j] = this.cells[srcBegin + deltaRow, j];
                 }
 
                 for (int i = 0; i < Math.Abs(count); i++)
                 {
                     int deltaRow = -i * Math.Sign(count);
-                    this.ClearCell(ref this.screen[clearBegin + deltaRow, j]);
+                    this.ClearCell(ref this.cells[clearBegin + deltaRow, j]);
                 }
             }
         }
@@ -443,12 +473,12 @@ namespace Dotnvim.NeovimClient
         /// <summary>
         /// Redraw args.
         /// </summary>
-        public sealed class RedrawArgs
+        public sealed class Screen
         {
             /// <summary>
             /// Gets or sets the screen.
             /// </summary>
-            public Cell[,] Screen { get; set; }
+            public Cell[,] Cells { get; set; }
 
             /// <summary>
             /// Gets or sets the cursor position.

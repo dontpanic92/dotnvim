@@ -31,5 +31,14 @@ namespace Dotnvim.NeovimClient.API
         {
             this.msgPackRpc.SendRequest("nvim_input", new List<object>() { keys });
         }
+
+        /// <summary>
+        /// Writes an error message to the vim error buffer.
+        /// </summary>
+        /// <param name="message">The error message.</param>
+        public void WriteErrorMessage(string message)
+        {
+            this.msgPackRpc.SendRequest("nvim_err_writeln", new List<object>() { message });
+        }
     }
 }

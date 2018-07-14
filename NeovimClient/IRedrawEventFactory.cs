@@ -122,5 +122,13 @@ namespace Dotnvim.NeovimClient
         /// <param name="count">Row count to scroll.</param>
         /// <returns>The created redraw event.</returns>
         TRedrawEvent CreateScrollEvent(int count);
+
+        /// <summary>
+        /// Create OptionSet event.
+        /// </summary>
+        /// <param name="name">The option name.</param>
+        /// <param name="value">The option value.</param>
+        /// <returns>The created redraw event.</returns>
+        TRedrawEvent CreateOptionSetEvent(string name, string value);
     }
 }

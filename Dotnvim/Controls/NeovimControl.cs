@@ -6,6 +6,7 @@
 namespace Dotnvim.Controls
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
@@ -13,6 +14,7 @@ namespace Dotnvim.Controls
     using System.Threading;
     using System.Threading.Tasks;
     using Dotnvim.Controls.Utilities;
+    using Dotnvim.NeovimClient.Utilities;
     using SharpDX;
     using SharpDX.Direct2D1;
     using SharpDX.Mathematics.Interop;
@@ -35,10 +37,9 @@ namespace Dotnvim.Controls
         private readonly CursorEffects cursorEffects;
         private readonly DxItemCache dxItemCache;
 
-        private string fontName = "Fira Code";
-        private float fontPoint = 11;
-        private float lineHeight;
-        private float charWidth;
+        private readonly ConcurrentQueue<Action> pendingActions = new ConcurrentQueue<Action>();
+
+        private TextLayoutParameters textParam;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NeovimControl"/> class.
@@ -50,17 +51,21 @@ namespace Dotnvim.Controls
         {
             this.neovimClient = neovimClient;
             this.neovimClient.Redraw += this.Invalidate;
-
-            using (var textFormat = new DWrite.TextFormat(this.factoryDWrite, this.fontName, DWrite.FontWeight.Normal, DWrite.FontStyle.Normal, (float)Helpers.GetFontSize(this.fontPoint)))
-            using (var textLayout = new DWrite.TextLayout(this.factoryDWrite, "A", textFormat, 1000, 1000))
-            {
-                this.lineHeight = Helpers.AlignToPixel(textLayout.Metrics.Height, this.Factory.DesktopDpi.Height);
-                this.charWidth = Helpers.AlignToPixel(textLayout.OverhangMetrics.Left + (1000 + textLayout.OverhangMetrics.Right), this.Factory.DesktopDpi.Width);
-            }
+            this.neovimClient.FontChanged += this.OnFontChanged;
 
             this.textAnalyzer = new DWrite.TextAnalyzer(this.factoryDWrite);
             this.cursorEffects = new CursorEffects(this.DeviceContext);
             this.dxItemCache = new DxItemCache(this.factoryDWrite);
+
+            this.textParam = new TextLayoutParameters(
+                this.factoryDWrite,
+                "Consolas",
+                11,
+                false,
+                false,
+                false,
+                false,
+                this.Factory.DesktopDpi);
         }
 
         /// <inheritdoc />
@@ -98,7 +103,7 @@ namespace Dotnvim.Controls
         {
             get
             {
-                var c = (uint)(this.Size.Height / this.lineHeight);
+                var c = (uint)(this.Size.Height / this.textParam.LineHeight);
                 if (c == 0)
                 {
                     c = 1;
@@ -115,7 +120,7 @@ namespace Dotnvim.Controls
         {
             get
             {
-                var c = (uint)(this.Size.Width / this.charWidth);
+                var c = (uint)(this.Size.Width / this.textParam.CharWidth);
                 if (c == 0)
                 {
                     c = 1;
@@ -137,10 +142,44 @@ namespace Dotnvim.Controls
             this.neovimClient.Input(text);
         }
 
+        /// <summary>
+        /// GuiFont changed.
+        /// </summary>
+        /// <param name="font">The font settings.</param>
+        public void OnFontChanged(FontSettings font)
+        {
+            this.pendingActions.Enqueue(() =>
+            {
+                if (this.dxItemCache.SetPrimaryFontFamily(font.FontName))
+                {
+                    this.textParam = new TextLayoutParameters(
+                        this.factoryDWrite,
+                        font.FontName,
+                        font.FontPointSize,
+                        font.Bold,
+                        font.Italic,
+                        font.Underline,
+                        font.StrikeOut,
+                        this.Factory.DesktopDpi);
+                    this.neovimClient.TryResize(this.DesiredColCount, this.DesiredRowCount);
+                }
+                else
+                {
+                    this.neovimClient.WriteErrorMessage($"Dotnvim: Unable to use font: {font.FontName}");
+                }
+            });
+            this.Invalidate();
+        }
+
         /// <inheritdoc />
         protected override void Draw()
         {
-            var args = this.neovimClient.GetRedrawArgs();
+            while (this.pendingActions.TryDequeue(out var action))
+            {
+                action();
+            }
+
+            var args = this.neovimClient.GetScreen();
 
             if (args == null)
             {
@@ -151,17 +190,17 @@ namespace Dotnvim.Controls
             this.DeviceContext.Clear(new RawColor4(0, 0, 0, 0));
 
             // Paint the background
-            for (int i = 0; i < args.Screen.GetLength(0); i++)
+            for (int i = 0; i < args.Cells.GetLength(0); i++)
             {
-                for (int j = 0; j < args.Screen.GetLength(1); j++)
+                for (int j = 0; j < args.Cells.GetLength(1); j++)
                 {
-                    if (args.Screen[i, j].BackgroundColor != args.BackgroundColor || args.Screen[i, j].Reverse)
+                    if (args.Cells[i, j].BackgroundColor != args.BackgroundColor || args.Cells[i, j].Reverse)
                     {
-                        var x = j * this.charWidth;
-                        var y = i * this.lineHeight;
+                        var x = j * this.textParam.CharWidth;
+                        var y = i * this.textParam.LineHeight;
 
-                        var rect = new RawRectangleF(x, y, x + this.charWidth, y + this.lineHeight);
-                        int color = args.Screen[i, j].Reverse ? args.Screen[i, j].ForegroundColor : args.Screen[i, j].BackgroundColor;
+                        var rect = new RawRectangleF(x, y, x + this.textParam.CharWidth, y + this.textParam.LineHeight);
+                        int color = args.Cells[i, j].Reverse ? args.Cells[i, j].ForegroundColor : args.Cells[i, j].BackgroundColor;
                         var brush = this.dxItemCache.GetBrush(this.DeviceContext, color);
                         this.DeviceContext.FillRectangle(rect, brush);
                     }
@@ -169,26 +208,26 @@ namespace Dotnvim.Controls
             }
 
             // Paint the foreground
-            for (int i = 0; i < args.Screen.GetLength(0); i++)
+            for (int i = 0; i < args.Cells.GetLength(0); i++)
             {
                 int j = 0;
 
-                while (j < args.Screen.GetLength(1))
+                while (j < args.Cells.GetLength(1))
                 {
                     // Cells with same style should be analyzed together.
                     // This prevents the inproper ligature in <html>=
                     // Of course, it relies on enabling the syntax.
                     int cellRangeStart = j;
                     int cellRangeEnd = j;
-                    Cell startCell = args.Screen[i, cellRangeStart];
+                    Cell startCell = args.Cells[i, cellRangeStart];
                     while (true)
                     {
-                        if (cellRangeEnd == args.Screen.GetLength(1))
+                        if (cellRangeEnd == args.Cells.GetLength(1))
                         {
                             break;
                         }
 
-                        Cell cell = args.Screen[i, cellRangeEnd];
+                        Cell cell = args.Cells[i, cellRangeEnd];
                         if (cell.Character != null
                             && (cell.ForegroundColor != startCell.ForegroundColor
                                 || cell.BackgroundColor != startCell.BackgroundColor
@@ -207,12 +246,12 @@ namespace Dotnvim.Controls
 
                     j = cellRangeEnd;
 
-                    var fontWeight = args.Screen[i, cellRangeStart].Bold ? DWrite.FontWeight.Bold : DWrite.FontWeight.Normal;
-                    var fontStyle = args.Screen[i, cellRangeStart].Italic ? DWrite.FontStyle.Italic : DWrite.FontStyle.Normal;
+                    var fontWeight = args.Cells[i, cellRangeStart].Bold ? DWrite.FontWeight.Bold : this.textParam.Weight;
+                    var fontStyle = args.Cells[i, cellRangeStart].Italic ? DWrite.FontStyle.Italic : this.textParam.Style;
 
                     int cellIndex = cellRangeStart;
                     using (var textSink = new TextAnalysisSink())
-                    using (var textSource = new RowTextSource(this.factoryDWrite, args.Screen, i, cellRangeStart, cellRangeEnd))
+                    using (var textSource = new RowTextSource(this.factoryDWrite, args.Cells, i, cellRangeStart, cellRangeEnd))
                     {
                         this.textAnalyzer.AnalyzeScript(textSource, 0, textSource.Length, textSink);
 
@@ -271,7 +310,7 @@ namespace Dotnvim.Controls
                             {
                                 // var fontWeight = args.Screen[i, cellIndex].Bold ? DWrite.FontWeight.Bold : DWrite.FontWeight.Normal;
                                 // var fontStyle = args.Screen[i, cellIndex].Italic ? DWrite.FontStyle.Italic : DWrite.FontStyle.Normal;
-                                var foregroundColor = args.Screen[i, cellIndex].Reverse ? args.Screen[i, cellIndex].BackgroundColor : args.Screen[i, cellIndex].ForegroundColor;
+                                var foregroundColor = args.Cells[i, cellIndex].Reverse ? args.Cells[i, cellIndex].BackgroundColor : args.Cells[i, cellIndex].ForegroundColor;
                                 var foregroundBrush = this.dxItemCache.GetBrush(this.DeviceContext, foregroundColor);
                                 var fontFace2 = fontFace;
                                 short[] indices2;
@@ -284,13 +323,13 @@ namespace Dotnvim.Controls
                                 {
                                     // If the primary font doesn't have the glyph, get a font from system font fallback.
                                     // Ligatures for fallback fonts are not supported yet.
-                                    int codePoint = args.Screen[i, cellIndex].Character.Value;
+                                    int codePoint = args.Cells[i, cellIndex].Character.Value;
                                     fontFace2 = this.dxItemCache.GetFontFace(codePoint, fontWeight, fontStyle);
                                     indices2 = fontFace2.GetGlyphIndices(new int[] { codePoint });
                                     glyphCount = indices2.Length;
 
                                     // NativeInterop.Methods.wcwidth(textSource.GetCodePoint(codePointStart + codePointIndex));
-                                    cellWidth = this.GetCharWidth(args.Screen, i, cellIndex);
+                                    cellWidth = this.GetCharWidth(args.Cells, i, cellIndex);
                                     codePointCount = 1;
                                 }
                                 else
@@ -325,7 +364,7 @@ namespace Dotnvim.Controls
                                         }
 
                                         // NativeInterop.Methods.wcwidth(textSource.GetCodePoint(codePointStart + codePointIndex + codePointCount));
-                                        cellWidth += this.GetCharWidth(args.Screen, i, cellIndex + cellWidth);
+                                        cellWidth += this.GetCharWidth(args.Cells, i, cellIndex + cellWidth);
                                         codePointCount++;
                                     }
 
@@ -342,13 +381,13 @@ namespace Dotnvim.Controls
                                     FontFace = fontFace2,
                                     Advances = null,
                                     BidiLevel = 0,
-                                    FontSize = Helpers.GetFontSize(this.fontPoint),
+                                    FontSize = this.textParam.DipSize,
                                     Indices = indices2,
                                     IsSideways = false,
                                     Offsets = null,
                                 })
                                 {
-                                    var origin = new RawVector2(this.charWidth * cellIndex, (this.lineHeight * i) + (this.lineHeight * 0.8f));
+                                    var origin = new RawVector2(this.textParam.CharWidth * cellIndex, this.textParam.LineHeight * (i + 0.8f));
                                     this.DeviceContext.DrawGlyphRun(origin, glyphrun, foregroundBrush, D2D.MeasuringMode.Natural);
                                     glyphrun.FontFace = null;
                                 }
@@ -364,13 +403,13 @@ namespace Dotnvim.Controls
 
             this.DeviceContext.EndDraw();
 
-            var cursorWidth = this.GetCharWidth(args.Screen, args.CursorPosition.Row, args.CursorPosition.Col);
+            var cursorWidth = this.GetCharWidth(args.Cells, args.CursorPosition.Row, args.CursorPosition.Col);
             var cursorRect = new RawRectangleF()
             {
-                Left = args.CursorPosition.Col * this.charWidth,
-                Top = args.CursorPosition.Row * this.lineHeight,
-                Right = (args.CursorPosition.Col + cursorWidth) * this.charWidth,
-                Bottom = (args.CursorPosition.Row + 1) * this.lineHeight,
+                Left = args.CursorPosition.Col * this.textParam.CharWidth,
+                Top = args.CursorPosition.Row * this.textParam.LineHeight,
+                Right = (args.CursorPosition.Col + cursorWidth) * this.textParam.CharWidth,
+                Bottom = (args.CursorPosition.Row + 1) * this.textParam.LineHeight,
             };
 
             this.cursorEffects.SetCursorRect(cursorRect);
@@ -402,14 +441,16 @@ namespace Dotnvim.Controls
 
         private sealed class DxItemCache : IDisposable
         {
+            private const string DefaultFontFamilyName = "Consolas";
+
             private readonly Dictionary<int, D2D.SolidColorBrush> brushCache
                 = new Dictionary<int, D2D.SolidColorBrush>();
 
             private readonly DWrite.Factory factory;
             private readonly DWrite.FontCollection fontCollection;
 
-            private readonly DWrite.FontFallback fontFallback;
-            private readonly List<FontFamilyCacheItem> fallbackFontFamilies = new List<FontFamilyCacheItem>();
+            private readonly DWrite.FontFallback systemFontFallback;
+            private readonly List<FontFamilyCacheItem> fontFamilies = new List<FontFamilyCacheItem>();
 
             private string baseFontFamilyName;
 
@@ -419,15 +460,15 @@ namespace Dotnvim.Controls
                 using (var factoryDWrite = factory.QueryInterface<DWrite.Factory2>())
                 {
                     this.fontCollection = factoryDWrite.GetSystemFontCollection(false);
-                    this.fontFallback = factoryDWrite.SystemFontFallback;
-                    this.SetFallbackFontFamilyCache(new List<string>() { "Fira Code" });
+                    this.systemFontFallback = factoryDWrite.SystemFontFallback;
+                    this.SetPrimaryFontFamily(DefaultFontFamilyName);
                 }
             }
 
             public void Dispose()
             {
                 this.ClearBrushCache();
-                this.ClearFallbackFontCache();
+                this.ClearFontCache();
                 this.fontCollection.Dispose();
             }
 
@@ -453,14 +494,27 @@ namespace Dotnvim.Controls
                 }
             }
 
+            public bool SetPrimaryFontFamily(string fontFamilyName)
+            {
+                if (FontFamilyCacheItem.TryCreate(this.fontCollection, fontFamilyName, out var item))
+                {
+                    this.ClearFontCache();
+                    this.baseFontFamilyName = fontFamilyName;
+                    this.fontFamilies.Add(item);
+                    return true;
+                }
+
+                return false;
+            }
+
             public DWrite.FontFace GetPrimaryFontFace(DWrite.FontWeight weight, DWrite.FontStyle style)
             {
-                return this.fallbackFontFamilies[0].GetFontFace(weight, style);
+                return this.fontFamilies[0].GetFontFace(weight, style);
             }
 
             public DWrite.FontFace GetFontFace(int codePoint, DWrite.FontWeight weight, DWrite.FontStyle style)
             {
-                foreach (var f in this.fallbackFontFamilies)
+                foreach (var f in this.fontFamilies)
                 {
                     var face = f.GetFontFace(codePoint, weight, style);
                     if (face != null)
@@ -471,7 +525,7 @@ namespace Dotnvim.Controls
 
                 using (var source = new SingleCharTextSource(this.factory, codePoint))
                 {
-                    this.fontFallback.MapCharacters(
+                    this.systemFontFallback.MapCharacters(
                         source,
                         0,
                         1,
@@ -486,8 +540,8 @@ namespace Dotnvim.Controls
 
                     if (font != null)
                     {
-                        var familyCache = new FontFamilyCacheItem(this.fontCollection, font.FontFamily.FamilyNames.GetString(0));
-                        this.fallbackFontFamilies.Add(familyCache);
+                        FontFamilyCacheItem.TryCreate(this.fontCollection, font.FontFamily.FamilyNames.GetString(0), out var familyCache);
+                        this.fontFamilies.Add(familyCache);
                         font.Dispose();
 
                         return familyCache.GetFontFace(codePoint, weight, style);
@@ -496,40 +550,43 @@ namespace Dotnvim.Controls
 
                 // OK we don't have the glyph for this codepoint in the fallbacks.
                 // Use primary font to show something like '?'.
-                return this.fallbackFontFamilies[0].GetFontFace(weight, style);
+                return this.fontFamilies[0].GetFontFace(weight, style);
             }
 
-            public void ClearFallbackFontCache()
+            private void ClearFontCache()
             {
-                foreach (var f in this.fallbackFontFamilies)
+                foreach (var f in this.fontFamilies)
                 {
                     f.Dispose();
                 }
-            }
 
-            private void SetFallbackFontFamilyCache(List<string> familyNames)
-            {
-                this.ClearFallbackFontCache();
-
-                this.baseFontFamilyName = familyNames[0];
-                foreach (var name in familyNames)
-                {
-                    this.fallbackFontFamilies.Add(new FontFamilyCacheItem(this.fontCollection, name));
-                }
+                this.fontFamilies.Clear();
             }
 
             private sealed class FontFamilyCacheItem : IDisposable
             {
-                private readonly string fontFamilyName;
                 private readonly DWrite.FontFamily fontFamily;
                 private readonly Dictionary<(DWrite.FontWeight weight, DWrite.FontStyle style), (DWrite.Font font, DWrite.FontFace fontFace)> fontCache
                     = new Dictionary<(DWrite.FontWeight, DWrite.FontStyle), (DWrite.Font, DWrite.FontFace)>();
 
-                public FontFamilyCacheItem(DWrite.FontCollection collection, string fontFamilyName)
+                private FontFamilyCacheItem(DWrite.FontFamily fontFamily)
                 {
-                    this.fontFamilyName = fontFamilyName;
-                    collection.FindFamilyName(fontFamilyName, out var index);
-                    this.fontFamily = collection.GetFontFamily(index);
+                    this.fontFamily = fontFamily;
+                }
+
+                public static bool TryCreate(DWrite.FontCollection collection, string fontFamilyName, out FontFamilyCacheItem item)
+                {
+                    if (collection.FindFamilyName(fontFamilyName, out var index))
+                    {
+                        var fontFamily = collection.GetFontFamily(index);
+                        item = new FontFamilyCacheItem(fontFamily);
+                        return true;
+                    }
+                    else
+                    {
+                        item = null;
+                        return false;
+                    }
                 }
 
                 public void Dispose()
@@ -572,6 +629,53 @@ namespace Dotnvim.Controls
                     return v;
                 }
             }
+        }
+
+        private sealed class TextLayoutParameters
+        {
+            public TextLayoutParameters(
+                DWrite.Factory factory,
+                string name,
+                float pointSize,
+                bool bold,
+                bool italic,
+                bool underline,
+                bool strikeout,
+                Size2F dpi)
+            {
+                this.FontName = name;
+                this.PointSize = pointSize;
+                this.DipSize = Helpers.GetFontSize(pointSize);
+                this.Weight = bold ? DWrite.FontWeight.Bold : DWrite.FontWeight.Normal;
+                this.Style = italic ? DWrite.FontStyle.Italic : DWrite.FontStyle.Normal;
+                this.Underline = underline;
+                this.StrikeOut = strikeout;
+
+                using (var textFormat = new DWrite.TextFormat(factory, this.FontName, this.Weight, this.Style, this.DipSize))
+                using (var textLayout = new DWrite.TextLayout(factory, "A", textFormat, 1000, 1000))
+                {
+                    this.LineHeight = Helpers.AlignToPixel(textLayout.Metrics.Height, dpi.Height);
+                    this.CharWidth = Helpers.AlignToPixel(textLayout.OverhangMetrics.Left + (1000 + textLayout.OverhangMetrics.Right), dpi.Width);
+                }
+            }
+
+            public string FontName { get; }
+
+            public float PointSize { get; }
+
+            public float DipSize { get; }
+
+            public DWrite.FontStyle Style { get; }
+
+            public DWrite.FontWeight Weight { get; }
+
+            public bool Underline { get; }
+
+            public bool StrikeOut { get; }
+
+            public float LineHeight { get; }
+
+            public float CharWidth { get; }
         }
     }
 }

@@ -104,5 +104,17 @@ namespace Dotnvim.NeovimClient
         {
             return new ScrollEvent(count);
         }
+
+        /// <inheritdoc />
+        public IRedrawEvent CreateOptionSetEvent(string name, string value)
+        {
+            switch (name)
+            {
+                case "guifont":
+                    return new GuiFontEvent(value);
+            }
+
+            return new NopEvent();
+        }
     }
 }
