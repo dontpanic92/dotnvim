@@ -15,6 +15,7 @@ namespace Dotnvim.Controls
     using System.Threading.Tasks;
     using Dotnvim.Controls.Utilities;
     using Dotnvim.NeovimClient.Utilities;
+    using Dotnvim.Utilities;
     using SharpDX;
     using SharpDX.Direct2D1;
     using SharpDX.Mathematics.Interop;
@@ -129,6 +130,11 @@ namespace Dotnvim.Controls
                 return c;
             }
         }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the font ligature is enabled.
+        /// </summary>
+        public bool EnableLigature { get; set; }
 
         /// <inheritdoc />
         protected override EffectChain PostEffects => this.cursorEffects;
@@ -277,6 +283,26 @@ namespace Dotnvim.Controls
                                 try
                                 {
                                     var str = textSource.GetSubString(codePointStart, codePointLength);
+
+                                    DWrite.FontFeature[][] fontFeatures = null;
+                                    int[] featureLength = null;
+
+                                    if (!this.EnableLigature)
+                                    {
+                                        fontFeatures = new DWrite.FontFeature[][]
+                                        {
+                                            new DWrite.FontFeature[]
+                                            {
+                                                new DWrite.FontFeature(DWrite.FontFeatureTag.StandardLigatures, 0),
+                                            },
+                                        };
+
+                                        featureLength = new int[]
+                                        {
+                                            str.Length,
+                                        };
+                                    }
+
                                     this.textAnalyzer.GetGlyphs(
                                         str,
                                         str.Length,
@@ -286,8 +312,8 @@ namespace Dotnvim.Controls
                                         scriptAnalysis,
                                         null,
                                         null,
-                                        null,
-                                        null,
+                                        fontFeatures,
+                                        featureLength,
                                         glyphBufferLength,
                                         clusterMap,
                                         textProperties,

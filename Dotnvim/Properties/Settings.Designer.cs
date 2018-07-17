@@ -46,5 +46,41 @@ namespace Dotnvim.Properties {
                 this["BackgroundOpacity"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EnableLigature {
+            get {
+                return ((bool)(this["EnableLigature"]));
+            }
+            set {
+                this["EnableLigature"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool EnableBlurBehind {
+            get {
+                return ((bool)(this["EnableBlurBehind"]));
+            }
+            set {
+                this["EnableBlurBehind"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int BlurType {
+            get {
+                return ((int)(this["BlurType"]));
+            }
+            set {
+                this["BlurType"] = value;
+            }
+        }
     }
 }

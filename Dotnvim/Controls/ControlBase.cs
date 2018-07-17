@@ -11,6 +11,7 @@ namespace Dotnvim.Controls
     using System.Text;
     using System.Threading.Tasks;
     using Dotnvim.Controls.Utilities;
+    using Dotnvim.Utilities;
     using SharpDX;
     using SharpDX.Mathematics.Interop;
     using D2D = SharpDX.Direct2D1;
@@ -67,7 +68,6 @@ namespace Dotnvim.Controls
                 Bottom = this.Position.Y + this.Size.Height,
                 Right = this.Position.X + this.Size.Width,
             };
-            deviceContext.Clear(new RawColor4(0, 0, 0, 0));
 
             if (this.PostEffects?.Any() == true)
             {
@@ -80,6 +80,8 @@ namespace Dotnvim.Controls
             else
             {
                 deviceContext.DrawBitmap(this.backBitmap, boundary, 1, D2D.BitmapInterpolationMode.NearestNeighbor);
+
+                // deviceContext.DrawImage(this.backBitmap, new RawVector2(boundary.Left, boundary.Top), D2D.InterpolationMode.NearestNeighbor);
             }
         }
 

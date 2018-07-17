@@ -15,6 +15,7 @@ namespace Dotnvim
     using System.Drawing;
     using System.Runtime.InteropServices;
     using System.Windows.Forms;
+    using Dotnvim.Utilities;
 
     /// <summary>
     /// Extensions for blur windows.
@@ -23,6 +24,27 @@ namespace Dotnvim
     [SuppressMessage("StyleCop", "SA1602", Justification = "Undocumented APIs")]
     public static class WindowBlurExtensions
     {
+        /// <summary>
+        /// The type of blur.
+        /// </summary>
+        public enum BlurType
+        {
+            /// <summary>
+            /// Disable
+            /// </summary>
+            Disabled = -1,
+
+            /// <summary>
+            /// Gaussian Blur
+            /// </summary>
+            GaussianBlur = 0,
+
+            /// <summary>
+            /// AcrylicBlur
+            /// </summary>
+            AcrylicBlur = 1,
+        }
+
         internal enum AccentState
         {
             ACCENT_DISABLED = 0,
@@ -44,14 +66,53 @@ namespace Dotnvim
         /// <param name="window">this window.</param>
         /// <param name="backgroundColor">background color.</param>
         /// <param name="blurOpacity">opacity.</param>
-        public static void EnableBlur(this Form window, Color backgroundColor, double blurOpacity)
+        /// <param name="intBlurType">the blur type.</param>
+        public static void BlurBehind(this Form window, Color backgroundColor, double blurOpacity, int intBlurType)
         {
+            if (!Helpers.BlurBehindAvailable())
+            {
+                return;
+            }
+
+            BlurBehindInternal(window, backgroundColor, blurOpacity, BlurType.Disabled);
+
+            if (!Helpers.BlurBehindEnabled())
+            {
+                return;
+            }
+
+            BlurBehindInternal(window, backgroundColor, blurOpacity, (BlurType)intBlurType);
+        }
+
+        private static void BlurBehindInternal(Form window, Color backgroundColor, double blurOpacity, BlurType intBlurType)
+        {
+            var blurType = (BlurType)intBlurType;
+
+            if (blurType == BlurType.AcrylicBlur && !Helpers.AcrylicBlurAvailable())
+            {
+                return;
+            }
+
+            var accentState = AccentState.ACCENT_DISABLED;
+            switch (blurType)
+            {
+                case BlurType.GaussianBlur:
+                    accentState = AccentState.ACCENT_ENABLE_BLURBEHIND;
+                    break;
+                case BlurType.AcrylicBlur:
+                    accentState = AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND;
+                    break;
+                default:
+                    accentState = AccentState.ACCENT_DISABLED;
+                    break;
+            }
+
             uint backgroundColorValue = ((uint)backgroundColor.B << 16) + ((uint)backgroundColor.G << 8) + ((uint)backgroundColor.R);
-            uint blurOpacityValue = (uint)(blurOpacity * 255);
+            uint blurOpacityValue = 0; // (uint)(blurOpacity * 255);
 
             var accent = new AccentPolicy()
             {
-                AccentState = AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND,
+                AccentState = accentState,
                 GradientColor = (blurOpacityValue << 24) | (backgroundColorValue & 0xFFFFFF),
             };
 
@@ -73,10 +134,10 @@ namespace Dotnvim
         }
 
         [DllImport("user32.dll")]
-        internal static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
+        private static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
 
         [StructLayout(LayoutKind.Sequential)]
-        internal struct AccentPolicy
+        private struct AccentPolicy
         {
             public AccentState AccentState;
             public uint AccentFlags;
@@ -85,7 +146,7 @@ namespace Dotnvim
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        internal struct WindowCompositionAttributeData
+        private struct WindowCompositionAttributeData
         {
             public WindowCompositionAttribute Attribute;
             public IntPtr Data;

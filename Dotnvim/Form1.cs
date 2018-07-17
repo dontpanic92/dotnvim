@@ -19,6 +19,7 @@ namespace Dotnvim
     using Dotnvim.Controls;
     using Dotnvim.Events;
     using Dotnvim.NeovimClient.Events;
+    using Dotnvim.Utilities;
     using SharpDX;
     using SharpDX.Direct2D1;
     using SharpDX.Mathematics.Interop;
@@ -31,6 +32,7 @@ namespace Dotnvim
     {
         private const float TitleBarHeight = 28;
         private const float BorderWidth = 6.5f;
+        private const float DwmBorderSize = 1;
 
         private FormRenderer renderer;
         private int backgroundColor = -1;
@@ -182,19 +184,28 @@ namespace Dotnvim
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            this.EnableBlur(Color.FromArgb(255, 255, 255, 255), Properties.Settings.Default.BackgroundOpacity);
-            NativeInterop.Methods.ExtendFrame(this.Handle);
+            this.InitializeControls();
+
+            this.BlurBehind(Color.FromArgb(255, 255, 255, 255), Properties.Settings.Default.BackgroundOpacity, Properties.Settings.Default.BlurType);
+
+            var dwmBorderSize = Helpers.GetPixelSize(new Size2F(DwmBorderSize, DwmBorderSize), this.renderer.Dpi);
+            NativeInterop.Methods.ExtendFrame(this.Handle, dwmBorderSize.Width, dwmBorderSize.Height);
 
             Properties.Settings.Default.PropertyChanged += this.Default_PropertyChanged;
 
-            this.InitializeControls();
             this.OnResize();
         }
 
         /// <inheritdoc />
         protected override void OnPaint(PaintEventArgs e)
         {
-            this.renderer.Draw(new List<IElement>() { this.layout });
+            var backgroundColor = Helpers.GetColor(this.backgroundColor);
+            if (Helpers.BlurBehindEnabled())
+            {
+                backgroundColor.A = (float)Properties.Settings.Default.BackgroundOpacity;
+            }
+
+            this.renderer.Draw(new List<IElement>() { this.layout }, backgroundColor, 0);
         }
 
         /// <inheritdoc />
@@ -333,7 +344,7 @@ namespace Dotnvim
                 }
                 else
                 {
-                    this.layout.Padding = 0;
+                    this.layout.Padding = DwmBorderSize;
                 }
 
                 this.layout.Size = Helpers.GetDipSize(new Size2(this.Width, this.Height), this.renderer.Factory.DesktopDpi);
@@ -344,12 +355,24 @@ namespace Dotnvim
 
         private void Default_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(Properties.Settings.BackgroundOpacity))
+            switch (e.PropertyName)
             {
-                var color = Helpers.GetColor(this.backgroundColor);
-                this.EnableBlur(
-                    Color.FromArgb((int)(color.A * 255), (int)(color.R * 255), (int)(color.G * 255), (int)(color.B * 255)),
-                    Properties.Settings.Default.BackgroundOpacity);
+                case nameof(Properties.Settings.EnableBlurBehind):
+                case nameof(Properties.Settings.Default.BlurType):
+                    var color = Helpers.GetColor(this.backgroundColor);
+                    this.BlurBehind(
+                        Color.FromArgb((int)(color.A * 255), (int)(color.R * 255), (int)(color.G * 255), (int)(color.B * 255)),
+                        Properties.Settings.Default.BackgroundOpacity,
+                        Properties.Settings.Default.BlurType);
+                    this.Invalidate();
+                    break;
+                case nameof(Properties.Settings.BackgroundOpacity):
+                    this.Invalidate();
+                    break;
+                case nameof(Properties.Settings.EnableLigature):
+                    this.neovimControl.EnableLigature = Properties.Settings.Default.EnableLigature;
+                    this.Invalidate();
+                    break;
             }
         }
 
@@ -364,15 +387,18 @@ namespace Dotnvim
             this.neovimClient.NeovimExited += this.OnNeovimExited;
 
             this.neovimControl = new NeovimControl(this.layout, this.neovimClient);
+            this.neovimControl.EnableLigature = Properties.Settings.Default.EnableLigature;
+
             this.neovimClient.BackgroundColorChanged += (int intColor) =>
             {
                 this.backgroundColor = intColor;
                 this.Invoke(new MethodInvoker(() =>
                 {
                     var color = Helpers.GetColor(intColor);
-                    this.EnableBlur(
+                    this.BlurBehind(
                         Color.FromArgb((int)(color.A * 255), (int)(color.R * 255), (int)(color.G * 255), (int)(color.B * 255)),
-                        Properties.Settings.Default.BackgroundOpacity);
+                        Properties.Settings.Default.BackgroundOpacity,
+                        Properties.Settings.Default.BlurType);
                 }));
             };
 

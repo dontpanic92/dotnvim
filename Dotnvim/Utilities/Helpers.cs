@@ -3,7 +3,7 @@
 // Licensed under the GPLv2 license. See LICENSE file in the project root for full license information.
 // </copyright>
 
-namespace Dotnvim
+namespace Dotnvim.Utilities
 {
     using System;
     using SharpDX;
@@ -141,6 +141,33 @@ namespace Dotnvim
             var newBitmap = new D2D.Bitmap(renderTarget, pixelSize, bitmapProperties);
             newBitmap.CopyFromBitmap(bitmap, new RawPoint(0, 0), pixelRect);
             return newBitmap;
+        }
+
+        /// <summary>
+        /// Check whether we are running in Windows 10+.
+        /// </summary>
+        /// <returns>whether the blurbehind feature is available.</returns>
+        public static bool BlurBehindAvailable()
+        {
+            return Environment.OSVersion.Version.Major >= 10;
+        }
+
+        /// <summary>
+        /// Check whether the blur behind is enabled.
+        /// </summary>
+        /// <returns>whether the blur behind is enabled.</returns>
+        public static bool BlurBehindEnabled()
+        {
+            return Properties.Settings.Default.EnableBlurBehind && BlurBehindAvailable();
+        }
+
+        /// <summary>
+        /// Check whether we are running in Windows 10 RS4+.
+        /// </summary>
+        /// <returns>whether the blurbehind feature is available.</returns>
+        public static bool AcrylicBlurAvailable()
+        {
+            return Environment.OSVersion.Version.Build >= 17134;
         }
     }
 }

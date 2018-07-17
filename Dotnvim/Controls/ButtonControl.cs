@@ -6,6 +6,7 @@
 namespace Dotnvim.Controls
 {
     using Dotnvim.Events;
+    using Dotnvim.Utilities;
     using SharpDX;
     using SharpDX.Mathematics.Interop;
     using D2D = SharpDX.Direct2D1;

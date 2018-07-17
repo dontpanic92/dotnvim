@@ -287,8 +287,12 @@ namespace Dotnvim.NeovimClient
 
                     case "option_set":
                         {
-                            var list = cmd[1].AsList();
-                            events.Add(this.factory.CreateOptionSetEvent(list[0].AsString(), list[1].ToString()));
+                            for (int i = 1; i < cmd.Count; i++)
+                            {
+                                var list = cmd[i].AsList();
+                                events.Add(this.factory.CreateOptionSetEvent(list[0].AsString(), list[1].ToString()));
+                            }
+
                             break;
                         }
                 }

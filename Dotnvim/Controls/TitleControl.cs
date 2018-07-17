@@ -10,6 +10,7 @@ namespace Dotnvim.Controls
     using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
+    using Dotnvim.Utilities;
     using SharpDX.Mathematics.Interop;
     using D2D = SharpDX.Direct2D1;
     using DWrite = SharpDX.DirectWrite;

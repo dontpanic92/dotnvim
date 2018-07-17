@@ -5,13 +5,28 @@
 
 namespace Dotnvim.Dialogs
 {
+    using System;
+    using System.Globalization;
     using System.Windows;
+    using System.Windows.Data;
+    using Dotnvim.Utilities;
 
     /// <summary>
     /// Interaction logic for SettingsDialog.xaml.
     /// </summary>
     public partial class SettingsDialog : Window
     {
+        /*private static readonly DependencyProperty BlurBehindEnabledProperty
+            = DependencyProperty.Register(
+                "BlurBehindEnabled",
+                typeof(bool),
+                typeof(SettingsDialog),
+                new PropertyMetadata(
+                    false,
+                    (DependencyObject d, DependencyPropertyChangedEventArgs e) =>
+                    {
+                    }));*/
+
         /// <summary>
         /// Initializes a new instance of the <see cref="SettingsDialog"/> class.
         /// </summary>
@@ -26,6 +41,7 @@ namespace Dotnvim.Dialogs
                 this.PromptLabel.Visibility = Visibility.Visible;
             }
 
+            // this.SetValue(BlurBehindEnabledProperty, Helpers.BlurBehindEnabled());
             this.Closing += this.SettingsDialog_Closing;
         }
 
@@ -48,6 +64,50 @@ namespace Dotnvim.Dialogs
             /// Window closed due to Cancel button clicked
             /// </summary>
             Cancel,
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the blur behind feature is enabled.
+        /// </summary>
+        public bool BlurBehindEnabled
+        {
+            get
+            {
+                // return (bool)this.GetValue(BlurBehindEnabledProperty);
+                return Helpers.BlurBehindEnabled();
+            }
+
+            set
+            {
+                if (Properties.Settings.Default.EnableBlurBehind != value)
+                {
+                    Properties.Settings.Default.EnableBlurBehind = value;
+                }
+
+                // this.SetValue(BlurBehindEnabledProperty, value);
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the blur behind feature available.
+        /// </summary>
+        public bool BlurBehindAvailable
+        {
+            get
+            {
+                return Helpers.BlurBehindAvailable();
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the acrylic blur feature available.
+        /// </summary>
+        public bool AcrylicBlurAvailable
+        {
+            get
+            {
+                return Helpers.AcrylicBlurAvailable();
+            }
         }
 
         /// <summary>

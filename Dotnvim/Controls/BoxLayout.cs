@@ -61,7 +61,6 @@ namespace Dotnvim.Controls
         /// <param name="deviceContext">the device context.</param>
         public override void Draw(DeviceContext deviceContext)
         {
-            deviceContext.Clear(new RawColor4(0, 0, 0, 0));
             foreach (var (control, _) in this.Controls)
             {
                 var boundary = new RawRectangleF()

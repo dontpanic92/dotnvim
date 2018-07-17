@@ -9,6 +9,7 @@ namespace Dotnvim
     using System.Collections.Generic;
     using System.Windows.Forms;
     using Dotnvim.Controls;
+    using Dotnvim.Utilities;
     using SharpDX.Mathematics.Interop;
     using D2D = SharpDX.Direct2D1;
     using D3D = SharpDX.Direct3D;
@@ -155,7 +156,9 @@ namespace Dotnvim
         /// Draw the form.
         /// </summary>
         /// <param name="controls">The children controls.</param>
-        public void Draw(IList<IElement> controls)
+        /// <param name="backgroundColor">The background color.</param>
+        /// <param name="dwmBorderSize">The dwm border size.</param>
+        public void Draw(IList<IElement> controls, RawColor4 backgroundColor, float dwmBorderSize)
         {
             if (this.backBitmap == null)
             {
@@ -164,7 +167,11 @@ namespace Dotnvim
 
             this.deviceContext2d.BeginDraw();
             this.deviceContext2d.Target = this.renderBitmap;
-            this.deviceContext2d.Clear(new RawColor4(0, 0, 0, 0));
+            this.deviceContext2d.Clear(null);
+
+            var rect = new RawRectangleF(dwmBorderSize, dwmBorderSize, this.deviceContext2d.Size.Width - (2 * dwmBorderSize), this.deviceContext2d.Size.Height - (2 * dwmBorderSize));
+            this.deviceContext2d.PushAxisAlignedClip(rect, D2D.AntialiasMode.Aliased);
+            this.deviceContext2d.Clear(backgroundColor);
 
             foreach (var control in controls)
             {
@@ -180,6 +187,8 @@ namespace Dotnvim
                 control.Draw(this.deviceContext2d);
                 this.deviceContext2d.PopAxisAlignedClip();
             }
+
+            this.deviceContext2d.PopAxisAlignedClip();
 
             this.deviceContext2d.Target = null;
             this.deviceContext2d.EndDraw();
