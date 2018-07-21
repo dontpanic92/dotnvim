@@ -167,7 +167,9 @@ namespace Dotnvim
 
             this.deviceContext2d.BeginDraw();
             this.deviceContext2d.Target = this.renderBitmap;
-            this.deviceContext2d.Clear(null);
+
+            var borderColor = new RawColor4(backgroundColor.R, backgroundColor.G, backgroundColor.B, 1);
+            this.deviceContext2d.Clear(borderColor);
 
             var rect = new RawRectangleF(dwmBorderSize, dwmBorderSize, this.deviceContext2d.Size.Width - dwmBorderSize, this.deviceContext2d.Size.Height - dwmBorderSize);
             this.deviceContext2d.PushAxisAlignedClip(rect, D2D.AntialiasMode.Aliased);

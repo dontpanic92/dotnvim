@@ -107,7 +107,7 @@ namespace Dotnvim
                     break;
             }
 
-            uint backgroundColorValue = ((uint)backgroundColor.B << 16) + ((uint)backgroundColor.G << 8) + ((uint)backgroundColor.R);
+            uint backgroundColorValue = 0xFFFFFF; // ((uint)backgroundColor.B << 16) + ((uint)backgroundColor.G << 8) + ((uint)backgroundColor.R);
             uint blurOpacityValue = 0; // (uint)(blurOpacity * 255);
 
             var accent = new AccentPolicy()
