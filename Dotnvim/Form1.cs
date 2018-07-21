@@ -205,7 +205,7 @@ namespace Dotnvim
                 backgroundColor.A = (float)Properties.Settings.Default.BackgroundOpacity;
             }
 
-            this.renderer.Draw(new List<IElement>() { this.layout }, backgroundColor, 0);
+            this.renderer.Draw(new List<IElement>() { this.layout }, backgroundColor, DwmBorderSize);
         }
 
         /// <inheritdoc />

@@ -169,7 +169,7 @@ namespace Dotnvim
             this.deviceContext2d.Target = this.renderBitmap;
             this.deviceContext2d.Clear(null);
 
-            var rect = new RawRectangleF(dwmBorderSize, dwmBorderSize, this.deviceContext2d.Size.Width - (2 * dwmBorderSize), this.deviceContext2d.Size.Height - (2 * dwmBorderSize));
+            var rect = new RawRectangleF(dwmBorderSize, dwmBorderSize, this.deviceContext2d.Size.Width - dwmBorderSize, this.deviceContext2d.Size.Height - dwmBorderSize);
             this.deviceContext2d.PushAxisAlignedClip(rect, D2D.AntialiasMode.Aliased);
             this.deviceContext2d.Clear(backgroundColor);
 
