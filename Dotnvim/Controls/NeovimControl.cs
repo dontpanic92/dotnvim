@@ -13,6 +13,7 @@ namespace Dotnvim.Controls
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Dotnvim.Controls.Cache;
     using Dotnvim.Controls.Utilities;
     using Dotnvim.NeovimClient.Utilities;
     using Dotnvim.Utilities;
@@ -36,7 +37,9 @@ namespace Dotnvim.Controls
         private readonly DWrite.Factory factoryDWrite = new DWrite.Factory();
 
         private readonly CursorEffects cursorEffects;
-        private readonly DxItemCache dxItemCache;
+        private readonly BrushCache brushCache;
+        private readonly FontCache fontCache;
+        private readonly ScriptAnalysesCache scriptAnalysesCache;
 
         private readonly ConcurrentQueue<Action> pendingActions = new ConcurrentQueue<Action>();
 
@@ -56,7 +59,9 @@ namespace Dotnvim.Controls
 
             this.textAnalyzer = new DWrite.TextAnalyzer(this.factoryDWrite);
             this.cursorEffects = new CursorEffects(this.DeviceContext);
-            this.dxItemCache = new DxItemCache(this.factoryDWrite);
+            this.brushCache = new BrushCache();
+            this.scriptAnalysesCache = new ScriptAnalysesCache();
+            this.fontCache = new FontCache(this.factoryDWrite);
 
             this.textParam = new TextLayoutParameters(
                 this.factoryDWrite,
@@ -156,7 +161,7 @@ namespace Dotnvim.Controls
         {
             this.pendingActions.Enqueue(() =>
             {
-                if (this.dxItemCache.SetPrimaryFontFamily(font.FontName))
+                if (this.fontCache.SetPrimaryFontFamily(font.FontName))
                 {
                     this.textParam = new TextLayoutParameters(
                         this.factoryDWrite,
@@ -207,7 +212,7 @@ namespace Dotnvim.Controls
 
                         var rect = new RawRectangleF(x, y, x + this.textParam.CharWidth, y + this.textParam.LineHeight);
                         int color = args.Cells[i, j].Reverse ? args.Cells[i, j].ForegroundColor : args.Cells[i, j].BackgroundColor;
-                        var brush = this.dxItemCache.GetBrush(this.DeviceContext, color);
+                        var brush = this.brushCache.GetBrush(this.DeviceContext, color);
                         this.DeviceContext.FillRectangle(rect, brush);
                     }
                 }
@@ -256,21 +261,29 @@ namespace Dotnvim.Controls
                     var fontStyle = args.Cells[i, cellRangeStart].Italic ? DWrite.FontStyle.Italic : this.textParam.Style;
 
                     int cellIndex = cellRangeStart;
-                    using (var textSink = new TextAnalysisSink())
                     using (var textSource = new RowTextSource(this.factoryDWrite, args.Cells, i, cellRangeStart, cellRangeEnd))
                     {
-                        this.textAnalyzer.AnalyzeScript(textSource, 0, textSource.Length, textSink);
+                        var scriptAnalyses = this.scriptAnalysesCache.GetOrAddAnalysisResult(
+                            textSource.GetTextAtPosition(0),
+                            (_) =>
+                            {
+                                using (var textSink = new TextAnalysisSink())
+                                {
+                                    this.textAnalyzer.AnalyzeScript(textSource, 0, textSource.Length, textSink);
+                                    return textSink.ScriptAnalyses;
+                                }
+                            });
 
                         // The result of AalyzeScript may cut the text into several ranges,
                         // and in each range the text's scripts are different.
-                        foreach (var (codePointStart, codePointLength, scriptAnalysis) in textSink.ScriptAnalyses)
+                        foreach (var (codePointStart, codePointLength, scriptAnalysis) in scriptAnalyses)
                         {
                             var glyphBufferLength = (codePointLength * 3 / 2) + 16;
                             var clusterMap = new short[codePointLength];
                             var textProperties = new DWrite.ShapingTextProperties[codePointLength];
                             short[] indices;
                             DWrite.ShapingGlyphProperties[] shapingProperties;
-                            var fontFace = this.dxItemCache.GetPrimaryFontFace(fontWeight, fontStyle);
+                            var fontFace = this.fontCache.GetPrimaryFontFace(fontWeight, fontStyle);
                             int actualGlyphCount;
 
                             // We don't know how many glyphs the text have. TextLength * 3 / 2 + 16
@@ -337,7 +350,7 @@ namespace Dotnvim.Controls
                                 // var fontWeight = args.Screen[i, cellIndex].Bold ? DWrite.FontWeight.Bold : DWrite.FontWeight.Normal;
                                 // var fontStyle = args.Screen[i, cellIndex].Italic ? DWrite.FontStyle.Italic : DWrite.FontStyle.Normal;
                                 var foregroundColor = args.Cells[i, cellIndex].Reverse ? args.Cells[i, cellIndex].BackgroundColor : args.Cells[i, cellIndex].ForegroundColor;
-                                var foregroundBrush = this.dxItemCache.GetBrush(this.DeviceContext, foregroundColor);
+                                var foregroundBrush = this.brushCache.GetBrush(this.DeviceContext, foregroundColor);
                                 var fontFace2 = fontFace;
                                 short[] indices2;
 
@@ -350,7 +363,7 @@ namespace Dotnvim.Controls
                                     // If the primary font doesn't have the glyph, get a font from system font fallback.
                                     // Ligatures for fallback fonts are not supported yet.
                                     int codePoint = args.Cells[i, cellIndex].Character.Value;
-                                    fontFace2 = this.dxItemCache.GetFontFace(codePoint, fontWeight, fontStyle);
+                                    fontFace2 = this.fontCache.GetFontFace(codePoint, fontWeight, fontStyle);
                                     indices2 = fontFace2.GetGlyphIndices(new int[] { codePoint });
                                     glyphCount = indices2.Length;
 
@@ -447,7 +460,8 @@ namespace Dotnvim.Controls
             base.DisposeManaged();
 
             this.cursorEffects.Dispose();
-            this.dxItemCache.Dispose();
+            this.brushCache.Dispose();
+            this.fontCache.Dispose();
         }
 
         private int GetCharWidth(Cell[,] screen, int row, int col)
@@ -463,198 +477,6 @@ namespace Dotnvim.Controls
             }
 
             return 1;
-        }
-
-        private sealed class DxItemCache : IDisposable
-        {
-            private const string DefaultFontFamilyName = "Consolas";
-
-            private readonly Dictionary<int, D2D.SolidColorBrush> brushCache
-                = new Dictionary<int, D2D.SolidColorBrush>();
-
-            private readonly DWrite.Factory factory;
-            private readonly DWrite.FontCollection fontCollection;
-
-            private readonly DWrite.FontFallback systemFontFallback;
-            private readonly List<FontFamilyCacheItem> fontFamilies = new List<FontFamilyCacheItem>();
-
-            private string baseFontFamilyName;
-
-            public DxItemCache(DWrite.Factory factory)
-            {
-                this.factory = factory;
-                using (var factoryDWrite = factory.QueryInterface<DWrite.Factory2>())
-                {
-                    this.fontCollection = factoryDWrite.GetSystemFontCollection(false);
-                    this.systemFontFallback = factoryDWrite.SystemFontFallback;
-                    this.SetPrimaryFontFamily(DefaultFontFamilyName);
-                }
-            }
-
-            public void Dispose()
-            {
-                this.ClearBrushCache();
-                this.ClearFontCache();
-                this.fontCollection.Dispose();
-            }
-
-            public D2D.SolidColorBrush GetBrush(D2D.DeviceContext dc, int color)
-            {
-                if (this.brushCache.TryGetValue(color, out var brush))
-                {
-                    return brush;
-                }
-                else
-                {
-                    var newBrush = new D2D.SolidColorBrush(dc, Helpers.GetColor(color));
-                    this.brushCache.Add(color, newBrush);
-                    return newBrush;
-                }
-            }
-
-            public void ClearBrushCache()
-            {
-                foreach (var brush in this.brushCache.Values)
-                {
-                    brush.Dispose();
-                }
-            }
-
-            public bool SetPrimaryFontFamily(string fontFamilyName)
-            {
-                if (FontFamilyCacheItem.TryCreate(this.fontCollection, fontFamilyName, out var item))
-                {
-                    this.ClearFontCache();
-                    this.baseFontFamilyName = fontFamilyName;
-                    this.fontFamilies.Add(item);
-                    return true;
-                }
-
-                return false;
-            }
-
-            public DWrite.FontFace GetPrimaryFontFace(DWrite.FontWeight weight, DWrite.FontStyle style)
-            {
-                return this.fontFamilies[0].GetFontFace(weight, style);
-            }
-
-            public DWrite.FontFace GetFontFace(int codePoint, DWrite.FontWeight weight, DWrite.FontStyle style)
-            {
-                foreach (var f in this.fontFamilies)
-                {
-                    var face = f.GetFontFace(codePoint, weight, style);
-                    if (face != null)
-                    {
-                        return face;
-                    }
-                }
-
-                using (var source = new SingleCharTextSource(this.factory, codePoint))
-                {
-                    this.systemFontFallback.MapCharacters(
-                        source,
-                        0,
-                        1,
-                        this.fontCollection,
-                        this.baseFontFamilyName,
-                        weight,
-                        style,
-                        DWrite.FontStretch.Normal,
-                        out var mappedLength,
-                        out var font,
-                        out var scale);
-
-                    if (font != null)
-                    {
-                        FontFamilyCacheItem.TryCreate(this.fontCollection, font.FontFamily.FamilyNames.GetString(0), out var familyCache);
-                        this.fontFamilies.Add(familyCache);
-                        font.Dispose();
-
-                        return familyCache.GetFontFace(codePoint, weight, style);
-                    }
-                }
-
-                // OK we don't have the glyph for this codepoint in the fallbacks.
-                // Use primary font to show something like '?'.
-                return this.fontFamilies[0].GetFontFace(weight, style);
-            }
-
-            private void ClearFontCache()
-            {
-                foreach (var f in this.fontFamilies)
-                {
-                    f.Dispose();
-                }
-
-                this.fontFamilies.Clear();
-            }
-
-            private sealed class FontFamilyCacheItem : IDisposable
-            {
-                private readonly DWrite.FontFamily fontFamily;
-                private readonly Dictionary<(DWrite.FontWeight weight, DWrite.FontStyle style), (DWrite.Font font, DWrite.FontFace fontFace)> fontCache
-                    = new Dictionary<(DWrite.FontWeight, DWrite.FontStyle), (DWrite.Font, DWrite.FontFace)>();
-
-                private FontFamilyCacheItem(DWrite.FontFamily fontFamily)
-                {
-                    this.fontFamily = fontFamily;
-                }
-
-                public static bool TryCreate(DWrite.FontCollection collection, string fontFamilyName, out FontFamilyCacheItem item)
-                {
-                    if (collection.FindFamilyName(fontFamilyName, out var index))
-                    {
-                        var fontFamily = collection.GetFontFamily(index);
-                        item = new FontFamilyCacheItem(fontFamily);
-                        return true;
-                    }
-                    else
-                    {
-                        item = null;
-                        return false;
-                    }
-                }
-
-                public void Dispose()
-                {
-                    this.fontFamily.Dispose();
-                    foreach (var (font, fontFace) in this.fontCache.Values)
-                    {
-                        font.Dispose();
-                        fontFace.Dispose();
-                    }
-                }
-
-                public DWrite.FontFace GetFontFace(DWrite.FontWeight weight, DWrite.FontStyle style)
-                {
-                    return this.GetOrAdd(weight, style).fontFace;
-                }
-
-                public DWrite.FontFace GetFontFace(int codePoint, DWrite.FontWeight weight, DWrite.FontStyle style)
-                {
-                    var (font, fontFace) = this.GetOrAdd(weight, style);
-
-                    if (font.HasCharacter(codePoint))
-                    {
-                        return fontFace;
-                    }
-
-                    return null;
-                }
-
-                private (DWrite.Font font, DWrite.FontFace fontFace) GetOrAdd(DWrite.FontWeight weight, DWrite.FontStyle style)
-                {
-                    if (!this.fontCache.TryGetValue((weight, style), out var v))
-                    {
-                        var font = this.fontFamily.GetFirstMatchingFont(weight, DWrite.FontStretch.Normal, style);
-                        var fontFace = new DWrite.FontFace(font);
-                        v = (font, fontFace);
-                        this.fontCache.Add((weight, style), v);
-                    }
-
-                    return v;
-                }
-            }
         }
 
         private sealed class TextLayoutParameters
