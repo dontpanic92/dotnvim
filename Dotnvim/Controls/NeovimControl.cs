@@ -197,6 +197,7 @@ namespace Dotnvim.Controls
                 return;
             }
 
+            this.scriptAnalysesCache.StartNewFrame();
             this.DeviceContext.BeginDraw();
             this.DeviceContext.Clear(new RawColor4(0, 0, 0, 0));
 

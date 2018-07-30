@@ -15,7 +15,7 @@ namespace Dotnvim.Controls.Cache
     /// </summary>
     public sealed class ScriptAnalysesCache
     {
-        private const int RetireFrameCount = 10;
+        private const int RetireFrameCount = 50;
         private readonly Dictionary<string, CacheItem> cache = new Dictionary<string, CacheItem>();
         private int frameCount = 0;
 
@@ -35,10 +35,13 @@ namespace Dotnvim.Controls.Cache
             else
             {
                 this.frameCount++;
-                var outdatedItems = this.cache.Where((kvp) => this.frameCount - kvp.Value.LastUsedFrameCount > RetireFrameCount);
+                var outdatedItems = this.cache
+                    .Where((kvp) => this.frameCount - kvp.Value.LastUsedFrameCount > RetireFrameCount)
+                    .Select((kvp) => kvp.Key)
+                    .ToList();
                 foreach (var item in outdatedItems)
                 {
-                    this.cache.Remove(item.Key);
+                    this.cache.Remove(item);
                 }
             }
         }

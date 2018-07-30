@@ -154,6 +154,9 @@ namespace Dotnvim
         /// <inheritdoc />
         protected override void OnClosing(CancelEventArgs e)
         {
+            // Save window state
+            Properties.WindowState.Default.Save();
+
             base.OnClosing(e);
             this.neovimClient.NeovimExited -= this.OnNeovimExited;
             this.neovimClient.Dispose();
@@ -184,6 +187,11 @@ namespace Dotnvim
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
+
+            // Load window size and state
+            this.Size = Properties.WindowState.Default.WindowSize;
+            this.WindowState = Properties.WindowState.Default.IsMaximized ? FormWindowState.Maximized : FormWindowState.Normal;
+
             this.InitializeControls();
 
             this.BlurBehind(Color.FromArgb(255, 255, 255, 255), Properties.Settings.Default.BackgroundOpacity, Properties.Settings.Default.BlurType);
@@ -330,6 +338,16 @@ namespace Dotnvim
             if (this.Size == this.formerSize)
             {
                 return;
+            }
+
+            if (this.WindowState == FormWindowState.Maximized)
+            {
+                Properties.WindowState.Default.IsMaximized = true;
+            }
+            else
+            {
+                Properties.WindowState.Default.IsMaximized = false;
+                Properties.WindowState.Default.WindowSize = this.Size;
             }
 
             this.formerSize = this.Size;
