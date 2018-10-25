@@ -118,7 +118,11 @@ namespace Dotnvim.Controls.Cache
                     this.fontFamilies.Add(familyCache);
                     font.Dispose();
 
-                    return familyCache.GetFontFace(codePoint, weight, style);
+                    var fontFace = familyCache.GetFontFace(codePoint, weight, style);
+                    if (fontFace != null)
+                    {
+                        return fontFace;
+                    }
                 }
             }
 

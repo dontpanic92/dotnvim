@@ -199,7 +199,7 @@ namespace Dotnvim.Controls
 
             this.scriptAnalysesCache.StartNewFrame();
             this.DeviceContext.BeginDraw();
-            this.DeviceContext.Clear(new RawColor4(0, 0, 0, 0));
+            this.DeviceContext.Clear(Helpers.GetColor(args.BackgroundColor, 0));
 
             // Paint the background
             for (int i = 0; i < args.Cells.GetLength(0); i++)
@@ -226,7 +226,7 @@ namespace Dotnvim.Controls
 
                 while (j < args.Cells.GetLength(1))
                 {
-                    // Cells with same style should be analyzed together.
+                    // Cells with the same style should be analyzed together.
                     // This prevents the inproper ligature in <html>=
                     // Of course, it relies on enabling the syntax.
                     int cellRangeStart = j;
