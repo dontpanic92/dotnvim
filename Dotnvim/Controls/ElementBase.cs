@@ -14,6 +14,7 @@ namespace Dotnvim.Controls
     using SharpDX;
     using SharpDX.Direct2D1;
     using SharpDX.Mathematics.Interop;
+    using D3D11 = SharpDX.Direct3D11;
 
     /// <summary>
     /// The base class for elements.
@@ -49,7 +50,10 @@ namespace Dotnvim.Controls
         public Factory1 Factory => this.Parent.Factory;
 
         /// <inheritdoc />
-        public Device Device => this.Parent.Device;
+        public Device Device2D => this.Parent.Device2D;
+
+        /// <inheritdoc />
+        public D3D11.Device Device => this.Parent.Device;
 
         /// <summary>
         /// Gets the parent.

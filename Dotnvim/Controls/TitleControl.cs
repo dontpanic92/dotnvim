@@ -39,9 +39,9 @@ namespace Dotnvim.Controls
             : base(parent)
         {
             this.textFormat = new DWrite.TextFormat(this.dwriteFactory, "Segoe UI", Helpers.GetFontSize(10));
-            this.textFormat.SetParagraphAlignment(DWrite.ParagraphAlignment.Center);
-            this.textFormat.SetTextAlignment(DWrite.TextAlignment.Trailing);
-            this.textFormat.SetWordWrapping(DWrite.WordWrapping.NoWrap);
+            this.textFormat.ParagraphAlignment = DWrite.ParagraphAlignment.Center;
+            this.textFormat.TextAlignment = DWrite.TextAlignment.Trailing;
+            this.textFormat.WordWrapping = DWrite.WordWrapping.NoWrap;
             var sign = new DWrite.EllipsisTrimming(this.dwriteFactory, this.textFormat);
             this.textFormat.SetTrimming(new DWrite.Trimming() { Granularity = DWrite.TrimmingGranularity.Character, Delimiter = 0, DelimiterCount = 0 }, sign);
             sign.Dispose();

@@ -9,6 +9,7 @@ namespace Dotnvim.Controls
     using Dotnvim.Events;
     using SharpDX.Mathematics.Interop;
     using D2D = SharpDX.Direct2D1;
+    using D3D11 = SharpDX.Direct3D11;
 
     /// <summary>
     /// The base interface for all visual element.
@@ -33,7 +34,12 @@ namespace Dotnvim.Controls
         /// <summary>
         /// Gets the Direct2D device.
         /// </summary>
-        D2D.Device Device { get; }
+        D2D.Device Device2D { get; }
+
+        /// <summary>
+        /// Gets the Direct2D device.
+        /// </summary>
+        D3D11.Device Device { get; }
 
         /// <summary>
         /// Draw the element.

@@ -25,7 +25,7 @@ namespace Dotnvim.Controls
     /// </summary>
     public abstract class ControlBase : ElementBase
     {
-        private D2D.Bitmap backBitmap;
+        private D2D.Bitmap1 backBitmap;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ControlBase"/> class.
@@ -34,10 +34,10 @@ namespace Dotnvim.Controls
         public ControlBase(IElement parent)
             : base(parent)
         {
-            this.DeviceContext = new D2D.DeviceContext(this.Device, D2D.DeviceContextOptions.EnableMultithreadedOptimizations)
+            this.DeviceContext = new D2D.DeviceContext(this.Device2D, D2D.DeviceContextOptions.EnableMultithreadedOptimizations)
             {
                 DotsPerInch = this.Factory.DesktopDpi,
-                AntialiasMode = D2D.AntialiasMode.Aliased,
+                AntialiasMode = D2D.AntialiasMode.PerPrimitive,
             };
         }
 
@@ -117,6 +117,12 @@ namespace Dotnvim.Controls
 
             Size2 pixelSize = Helpers.GetPixelSize(size, this.Factory.DesktopDpi);
 
+            var p = new D2D.BitmapProperties1(
+                new D2D.PixelFormat(DXGI.Format.B8G8R8A8_UNorm, D2D.AlphaMode.Premultiplied),
+                this.Factory.DesktopDpi.Width,
+                this.Factory.DesktopDpi.Height,
+                D2D.BitmapOptions.Target);
+
             var desc = new D3D11.Texture2DDescription()
             {
                 ArraySize = 1,
@@ -131,16 +137,11 @@ namespace Dotnvim.Controls
                 Height = pixelSize.Height,
             };
 
-            var p = new D2D.BitmapProperties1(
-                new D2D.PixelFormat(DXGI.Format.B8G8R8A8_UNorm, D2D.AlphaMode.Premultiplied),
-                this.Factory.DesktopDpi.Width,
-                this.Factory.DesktopDpi.Height,
-                D2D.BitmapOptions.Target);
-
-            this.backBitmap = new D2D.Bitmap1(
-                deviceContext,
-                pixelSize,
-                p);
+            using (var buffer = new D3D11.Texture2D(this.Device, desc))
+            using (var surface = buffer.QueryInterface<DXGI.Surface>())
+            {
+                this.backBitmap = new D2D.Bitmap1(this.DeviceContext, surface, p);
+            }
 
             this.DeviceContext.Target = this.backBitmap;
         }

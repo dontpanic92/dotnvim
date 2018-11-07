@@ -28,7 +28,7 @@ namespace Dotnvim
         private readonly D2D.Factory1 factory2d = new D2D.Factory1();
         private readonly D2D.Device device2d;
         private readonly DWrite.Factory factoryDWrite = new DWrite.Factory();
-        private readonly D2D.DeviceContext deviceContext2d;
+        private readonly D2D.DeviceContext deviceContext2D;
         private readonly DComp.Device deviceComp;
         private readonly DComp.Target compositionTarget;
 
@@ -38,6 +38,7 @@ namespace Dotnvim
         private readonly Form1 form;
 
         private D3D11.Texture2D backBuffer;
+        private D3D11.Texture2D renderBuffer;
         private D2D.Bitmap backBitmap;
         private D2D.Bitmap renderBitmap;
 
@@ -85,8 +86,8 @@ namespace Dotnvim
 
                     using (var visual = new DComp.Visual(this.deviceComp))
                     {
-                        visual.SetContent(this.swapChain);
-                        this.compositionTarget.SetRoot(visual);
+                        visual.Content = this.swapChain;
+                        this.compositionTarget.Root = visual;
                     }
 
                     this.deviceComp.Commit();
@@ -98,10 +99,10 @@ namespace Dotnvim
                 this.device2d = new D2D.Device(this.factory2d, device);
             }
 
-            this.deviceContext2d = new D2D.DeviceContext(this.device2d, D2D.DeviceContextOptions.None)
+            this.deviceContext2D = new D2D.DeviceContext(this.device2d, D2D.DeviceContextOptions.None)
             {
                 DotsPerInch = this.factory2d.DesktopDpi,
-                AntialiasMode = D2D.AntialiasMode.Aliased,
+                AntialiasMode = D2D.AntialiasMode.PerPrimitive,
             };
 
             this.CreateResources();
@@ -130,7 +131,7 @@ namespace Dotnvim
         /// <summary>
         /// Gets the Direct2D DeviceContext.
         /// </summary>
-        public D2D.DeviceContext DeviceContext => this.deviceContext2d;
+        public D2D.DeviceContext DeviceContext2D => this.deviceContext2D;
 
         /// <summary>
         /// Dispose.
@@ -139,7 +140,7 @@ namespace Dotnvim
         {
             this.ReleaseResources();
             this.renderBitmap?.Dispose();
-            this.deviceContext2d.Dispose();
+            this.deviceContext2D.Dispose();
             this.device2d.Dispose();
             this.compositionTarget.Dispose();
             this.deviceComp.Dispose();
@@ -165,15 +166,15 @@ namespace Dotnvim
                 return;
             }
 
-            this.deviceContext2d.BeginDraw();
-            this.deviceContext2d.Target = this.renderBitmap;
+            this.deviceContext2D.BeginDraw();
+            this.deviceContext2D.Target = this.renderBitmap;
 
             var borderColor = new RawColor4(backgroundColor.R, backgroundColor.G, backgroundColor.B, 1);
-            this.deviceContext2d.Clear(borderColor);
+            this.deviceContext2D.Clear(borderColor);
 
-            var rect = new RawRectangleF(dwmBorderSize, dwmBorderSize, this.deviceContext2d.Size.Width - dwmBorderSize, this.deviceContext2d.Size.Height - dwmBorderSize);
-            this.deviceContext2d.PushAxisAlignedClip(rect, D2D.AntialiasMode.Aliased);
-            this.deviceContext2d.Clear(backgroundColor);
+            var rect = new RawRectangleF(dwmBorderSize, dwmBorderSize, this.deviceContext2D.Size.Width - dwmBorderSize, this.deviceContext2D.Size.Height - dwmBorderSize);
+            this.deviceContext2D.PushAxisAlignedClip(rect, D2D.AntialiasMode.Aliased);
+            this.deviceContext2D.Clear(backgroundColor);
 
             foreach (var control in controls)
             {
@@ -185,15 +186,15 @@ namespace Dotnvim
                     Right = control.Position.X + control.Size.Width,
                 };
 
-                this.deviceContext2d.PushAxisAlignedClip(boundary, D2D.AntialiasMode.Aliased);
-                control.Draw(this.deviceContext2d);
-                this.deviceContext2d.PopAxisAlignedClip();
+                this.deviceContext2D.PushAxisAlignedClip(boundary, D2D.AntialiasMode.Aliased);
+                control.Draw(this.deviceContext2D);
+                this.deviceContext2D.PopAxisAlignedClip();
             }
 
-            this.deviceContext2d.PopAxisAlignedClip();
+            this.deviceContext2D.PopAxisAlignedClip();
 
-            this.deviceContext2d.Target = null;
-            this.deviceContext2d.EndDraw();
+            this.deviceContext2D.Target = null;
+            this.deviceContext2D.EndDraw();
 
             this.backBitmap.CopyFromBitmap(this.renderBitmap);
             this.device.ImmediateContext.Flush();
@@ -230,7 +231,7 @@ namespace Dotnvim
                     this.factory2d.DesktopDpi.Width,
                     this.factory2d.DesktopDpi.Height);
 
-                this.backBitmap = new D2D.Bitmap(this.deviceContext2d, surface, properties);
+                this.backBitmap = new D2D.Bitmap(this.deviceContext2D, surface, properties);
 
                 if (this.renderBitmap != null)
                 {
@@ -241,6 +242,7 @@ namespace Dotnvim
             if (this.renderBitmap != null)
             {
                 this.renderBitmap.Dispose();
+                this.renderBuffer.Dispose();
             }
 
             var p = new D2D.BitmapProperties1(
@@ -249,10 +251,28 @@ namespace Dotnvim
                 this.factory2d.DesktopDpi.Height,
                 D2D.BitmapOptions.Target);
 
-            this.renderBitmap = new D2D.Bitmap1(
-                this.deviceContext2d,
-                Helpers.GetPixelSize(this.backBitmap.Size, this.factory2d.DesktopDpi),
-                p);
+            var pixelSize = Helpers.GetPixelSize(this.backBitmap.Size, this.factory2d.DesktopDpi);
+
+            var desc = new D3D11.Texture2DDescription()
+            {
+                ArraySize = 1,
+                BindFlags = D3D11.BindFlags.RenderTarget | D3D11.BindFlags.ShaderResource,
+                CpuAccessFlags = D3D11.CpuAccessFlags.None,
+                Format = DXGI.Format.B8G8R8A8_UNorm,
+                MipLevels = 1,
+                OptionFlags = D3D11.ResourceOptionFlags.Shared,
+                Usage = D3D11.ResourceUsage.Default,
+                SampleDescription = new DXGI.SampleDescription(1, 0),
+                Width = pixelSize.Width,
+                Height = pixelSize.Height,
+            };
+
+            this.renderBuffer = new D3D11.Texture2D(this.device, desc);
+            using (var surface = this.renderBuffer.QueryInterface<DXGI.Surface>())
+            {
+                this.renderBitmap = new D2D.Bitmap1(this.deviceContext2D, surface, p);
+            }
+
             this.renderBitmap.CopyFromBitmap(this.backBitmap);
         }
     }

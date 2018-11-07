@@ -24,6 +24,7 @@ namespace Dotnvim
     using SharpDX.Direct2D1;
     using SharpDX.Mathematics.Interop;
     using static Dotnvim.NeovimClient.NeovimClient;
+    using D3D11 = SharpDX.Direct3D11;
 
     /// <summary>
     /// The Mainform.
@@ -78,7 +79,10 @@ namespace Dotnvim
         public Factory1 Factory => this.renderer.Factory;
 
         /// <inheritdoc />
-        public Device Device => this.renderer.Device2D;
+        public Device Device2D => this.renderer.Device2D;
+
+        /// <inheritdoc />
+        public D3D11.Device Device => this.renderer.Device;
 
         /// <inheritdoc />
         Size2F IElement.Size { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }

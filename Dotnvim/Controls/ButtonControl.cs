@@ -40,9 +40,9 @@ namespace Dotnvim.Controls
             : base(parent)
         {
             this.textFormat = new DWrite.TextFormat(this.dwriteFactory, "Segoe UI", Helpers.GetFontSize(10));
-            this.textFormat.SetParagraphAlignment(DWrite.ParagraphAlignment.Center);
-            this.textFormat.SetTextAlignment(DWrite.TextAlignment.Center);
-            this.textFormat.SetWordWrapping(DWrite.WordWrapping.NoWrap);
+            this.textFormat.ParagraphAlignment = DWrite.ParagraphAlignment.Center;
+            this.textFormat.TextAlignment = DWrite.TextAlignment.Center;
+            this.textFormat.WordWrapping = DWrite.WordWrapping.NoWrap;
 
             this.text = text;
 
@@ -176,7 +176,9 @@ namespace Dotnvim.Controls
             this.DeviceContext.BeginDraw();
             if (!this.isMouseOver)
             {
-                this.DeviceContext.Clear(new RawColor4(0, 0, 0, 0));
+                var transparentBackgroundColor = this.backgroundColor;
+                transparentBackgroundColor.A = 0;
+                this.DeviceContext.Clear(transparentBackgroundColor);
                 this.DeviceContext.DrawTextLayout(this.origin, this.textLayout, this.foregroundBrush);
             }
             else
