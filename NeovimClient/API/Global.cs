@@ -40,5 +40,15 @@ namespace Dotnvim.NeovimClient.API
         {
             this.msgPackRpc.SendRequest("nvim_err_writeln", new List<object>() { message });
         }
+
+        /// <summary>
+        /// Set a global (g:) variable.
+        /// </summary>
+        /// <param name="name">Variable name.</param>
+        /// <param name="value">Variable value.</param>
+        public void SetGlobalVariable(string name, string value)
+        {
+            this.msgPackRpc.SendRequest("nvim_set_var", new List<object>() { name, value });
+        }
     }
 }

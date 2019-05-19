@@ -6,24 +6,16 @@
 namespace Dotnvim
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.ComponentModel;
-    using System.Data;
     using System.Drawing;
-    using System.Linq;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
     using System.Windows.Forms;
     using Dotnvim.Controls;
     using Dotnvim.Events;
-    using Dotnvim.NeovimClient.Events;
     using Dotnvim.Utilities;
     using SharpDX;
     using SharpDX.Direct2D1;
     using SharpDX.Mathematics.Interop;
-    using static Dotnvim.NeovimClient.NeovimClient;
     using D3D11 = SharpDX.Direct3D11;
 
     /// <summary>

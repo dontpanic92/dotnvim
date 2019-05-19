@@ -54,6 +54,11 @@ namespace Dotnvim.Controls
         /// <inheritdoc />
         public override void Draw(D2D.DeviceContext deviceContext)
         {
+            if (this.Size.Width == 0 || this.Size.Height == 0)
+            {
+                return;
+            }
+
             if (this.backBitmap == null || this.backBitmap.Size != this.Size)
             {
                 this.InitializeBackBuffer(deviceContext, this.Size);

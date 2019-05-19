@@ -154,6 +154,16 @@ namespace Dotnvim.NeovimClient
         }
 
         /// <summary>
+        /// Set a global (g:) variable.
+        /// </summary>
+        /// <param name="name">Variable name.</param>
+        /// <param name="value">Variable value.</param>
+        public void SetVariable(string name, string value)
+        {
+            this.neovim.Global.SetGlobalVariable(name, value);
+        }
+
+        /// <summary>
         /// Write an error message to the vim error buffer.
         /// </summary>
         /// <param name="message">The message.</param>

@@ -44,7 +44,7 @@ namespace Dotnvim.NeovimClient
                     RedirectStandardInput = true,
                     RedirectStandardOutput = true,
                     WorkingDirectory = Path.GetDirectoryName(path),
-                    Arguments = "--headless --embed",
+                    Arguments = @"--headless --embed --cmd ""let g:gui_dotnvim = 1""",
                 },
 
                 EnableRaisingEvents = true,
