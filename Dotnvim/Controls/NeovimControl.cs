@@ -428,7 +428,7 @@ namespace Dotnvim.Controls
                                 })
                                 {
                                     var origin = new RawVector2(this.textParam.CharWidth * cellIndex, this.textParam.LineHeight * (i + 0.8f));
-                                    this.DeviceContext.DrawGlyphRun(origin, glyphrun, foregroundBrush, D2D.MeasuringMode.Natural);
+                                    this.DeviceContext.DrawGlyphRun(origin, glyphrun, foregroundBrush, D2D.MeasuringMode.GdiNatural);
                                     glyphrun.FontFace = null;
                                 }
 
