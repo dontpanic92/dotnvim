@@ -65,6 +65,14 @@ namespace Dotnvim
                     }
                 }
             }
+
+            this.InitializeControls();
+            this.BlurBehind(Color.FromArgb(255, 255, 255, 255), Properties.Settings.Default.BackgroundOpacity, Properties.Settings.Default.BlurType);
+
+            var dwmBorderSize = Helpers.GetPixelSize(new Size2F(DwmBorderSize, DwmBorderSize), this.renderer.Dpi);
+            NativeInterop.Methods.ExtendFrame(this.Handle, dwmBorderSize.Width, dwmBorderSize.Height);
+
+            Properties.Settings.Default.PropertyChanged += this.Default_PropertyChanged;
         }
 
         /// <inheritdoc />
@@ -187,16 +195,6 @@ namespace Dotnvim
             // Load window size and state
             this.Size = Properties.WindowState.Default.WindowSize;
             this.WindowState = Properties.WindowState.Default.IsMaximized ? FormWindowState.Maximized : FormWindowState.Normal;
-
-            this.InitializeControls();
-
-            this.BlurBehind(Color.FromArgb(255, 255, 255, 255), Properties.Settings.Default.BackgroundOpacity, Properties.Settings.Default.BlurType);
-
-            var dwmBorderSize = Helpers.GetPixelSize(new Size2F(DwmBorderSize, DwmBorderSize), this.renderer.Dpi);
-            NativeInterop.Methods.ExtendFrame(this.Handle, dwmBorderSize.Width, dwmBorderSize.Height);
-
-            Properties.Settings.Default.PropertyChanged += this.Default_PropertyChanged;
-
             this.OnResize();
         }
 
