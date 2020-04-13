@@ -442,17 +442,7 @@ namespace Dotnvim.Controls
             }
 
             this.DeviceContext.EndDraw();
-
-            var cursorWidth = this.GetCharWidth(args.Cells, args.CursorPosition.Row, args.CursorPosition.Col);
-            var cursorRect = new RawRectangleF()
-            {
-                Left = args.CursorPosition.Col * this.textParam.CharWidth,
-                Top = args.CursorPosition.Row * this.textParam.LineHeight,
-                Right = (args.CursorPosition.Col + cursorWidth) * this.textParam.CharWidth,
-                Bottom = (args.CursorPosition.Row + 1) * this.textParam.LineHeight,
-            };
-
-            this.cursorEffects.SetCursorRect(cursorRect);
+            this.DrawCursor(args);
         }
 
         /// <inheritdoc />
@@ -478,6 +468,48 @@ namespace Dotnvim.Controls
             }
 
             return 1;
+        }
+
+        private void DrawCursor(Screen args)
+        {
+            var cursorPercentage = this.neovimClient.ModeInfo?.CellPercentage ?? 100;
+            var cursorShape = this.neovimClient.ModeInfo?.CursorShape ?? CursorShape.Block;
+            var cellWidth = this.GetCharWidth(args.Cells, args.CursorPosition.Row, args.CursorPosition.Col);
+            RawRectangleF cursorRect;
+
+            switch (cursorShape)
+            {
+                case CursorShape.Vertical:
+                    cursorRect = new RawRectangleF()
+                    {
+                        Left = args.CursorPosition.Col * this.textParam.CharWidth,
+                        Top = args.CursorPosition.Row * this.textParam.LineHeight,
+                        Right = (args.CursorPosition.Col + (cursorPercentage / 100f)) * this.textParam.CharWidth,
+                        Bottom = (args.CursorPosition.Row + 1) * this.textParam.LineHeight,
+                    };
+                    break;
+                case CursorShape.Horizontal:
+                    float topMargin = this.textParam.LineHeight * (100 - cursorPercentage) / 100f;
+                    cursorRect = new RawRectangleF()
+                    {
+                        Left = args.CursorPosition.Col * this.textParam.CharWidth,
+                        Top = (args.CursorPosition.Row * this.textParam.LineHeight) + topMargin,
+                        Right = (args.CursorPosition.Col + cellWidth) * this.textParam.CharWidth,
+                        Bottom = (args.CursorPosition.Row + 1) * this.textParam.LineHeight,
+                    };
+                    break;
+                default:
+                    cursorRect = new RawRectangleF()
+                    {
+                        Left = args.CursorPosition.Col * this.textParam.CharWidth,
+                        Top = args.CursorPosition.Row * this.textParam.LineHeight,
+                        Right = (args.CursorPosition.Col + cellWidth) * this.textParam.CharWidth,
+                        Bottom = (args.CursorPosition.Row + 1) * this.textParam.LineHeight,
+                    };
+                    break;
+            }
+
+            this.cursorEffects.SetCursorRect(cursorRect);
         }
 
         private sealed class TextLayoutParameters

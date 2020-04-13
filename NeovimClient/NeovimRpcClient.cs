@@ -162,13 +162,22 @@ namespace Dotnvim.NeovimClient
 
                     case "mode_info_set":
                         {
-                            /*var args = cmd[1].AsList();
+                            var args = cmd[1].AsList();
                             var cursorStyleEnabled = args[0].AsBoolean();
                             var mode = args[1].AsList().Select(
                                 item => (IDictionary<string, string>)item.AsDictionary().ToDictionary(
                                     k => k.Key.AsStringUtf8(),
-                                    v => v.Value.AsStringUtf8())).ToList();
-                            events.Add(this.factory.CreateModeInfoSetEvent(cursorStyleEnabled, mode));*/
+                                    v => v.Value.ToString())).ToList();
+                            events.Add(this.factory.CreateModeInfoSetEvent(cursorStyleEnabled, mode));
+                            break;
+                        }
+
+                    case "mode_change":
+                        {
+                            var args = cmd[1].AsList();
+                            var modeName = args[0].AsStringUtf8();
+                            var index = args[1].AsInt32();
+                            events.Add(this.factory.CreateModeChangeEvent(modeName, index));
                             break;
                         }
 

@@ -31,6 +31,8 @@ namespace Dotnvim.NeovimClient
         private (int Left, int Top, int Right, int Bottom) scrollRegion;
         private bool initialized = false;
 
+        private IList<ModeInfo> modeInfo = new List<ModeInfo>();
+        private int modeIndex = 0;
         private string title;
         private string iconTitle;
         private Cell[,] cells;
@@ -113,6 +115,11 @@ namespace Dotnvim.NeovimClient
         /// Gets the Font settings.
         /// </summary>
         public FontSettings FontSettings { get; private set; }
+
+        /// <summary>
+        /// Gets the mode info.
+        /// </summary>
+        public ModeInfo ModeInfo => this.modeInfo?.Count > this.modeIndex ? this.modeInfo[this.modeIndex] : null;
 
         private int Height => this.cells.GetLength(0);
 
@@ -275,6 +282,12 @@ namespace Dotnvim.NeovimClient
                         case GuiFontEvent e:
                             this.FontSettings = e.FontSettings;
                             actions.Add(() => this.FontChanged?.Invoke(this.FontSettings));
+                            break;
+                        case ModeInfoSetEvent e:
+                            this.modeInfo = e.ModeInfo;
+                            break;
+                        case ModeChangeEvent e:
+                            this.modeIndex = e.Index;
                             break;
                     }
                 }

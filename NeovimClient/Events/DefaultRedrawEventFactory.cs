@@ -40,9 +40,15 @@ namespace Dotnvim.NeovimClient
         }
 
         /// <inheritdoc />
+        public IRedrawEvent CreateModeChangeEvent(string name, int index)
+        {
+            return new ModeChangeEvent(name, index);
+        }
+
+        /// <inheritdoc />
         public IRedrawEvent CreateModeInfoSetEvent(bool cursorStyleEnabled, IList<IDictionary<string, string>> modeInfo)
         {
-            return new NopEvent();
+            return new ModeInfoSetEvent(cursorStyleEnabled, modeInfo);
         }
 
         /// <inheritdoc />

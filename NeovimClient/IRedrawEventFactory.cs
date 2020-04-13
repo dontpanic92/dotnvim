@@ -41,6 +41,14 @@ namespace Dotnvim.NeovimClient
         TRedrawEvent CreateEolClearEvent();
 
         /// <summary>
+        /// Create ModeChange event.
+        /// </summary>
+        /// <param name="name">The name of this mode.</param>
+        /// <param name="index">The index of this mode.</param>
+        /// <returns>The created redraw event.</returns>
+        TRedrawEvent CreateModeChangeEvent(string name, int index);
+
+        /// <summary>
         /// Create ModeInfoSet event.
         /// </summary>
         /// <param name="cursorStyleEnabled">whether cursor style is enabled.</param>
