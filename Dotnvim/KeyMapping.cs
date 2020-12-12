@@ -18,6 +18,14 @@ namespace Dotnvim
     {
         private static Dictionary<Keys, string> specialKeys = new Dictionary<Keys, string>()
         {
+            { Keys.Back, "Bs" },
+            { Keys.Tab, "Tab" },
+            { Keys.LineFeed, "NL" },
+            { Keys.Return, "CR" },
+            { Keys.Escape, "Esc" },
+            { Keys.Space, "Space" },
+            { Keys.OemBackslash, "Bslash" },
+            { Keys.Delete, "Del" },
             { Keys.Up, "Up" },
             { Keys.Down, "Down" },
             { Keys.Left, "Left" },
@@ -28,8 +36,6 @@ namespace Dotnvim
             { Keys.End, "End" },
             { Keys.PageUp, "PageUp" },
             { Keys.PageDown, "PageDown" },
-            { Keys.Enter, "Enter" },
-            { Keys.Delete, "Del" },
             { Keys.F1, "F1" },
             { Keys.F2, "F2" },
             { Keys.F3, "F3" },
